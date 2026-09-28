@@ -10,6 +10,8 @@ const db = new PrismaClient();
 const dbDate = (ymd: string) => new Date(`${ymd}T00:00:00Z`);
 
 async function main() {
+  // Keep the public calendar link stable across re-seeds so shared links keep working.
+  const existingToken = (await db.setting.findUnique({ where: { key: "public_calendar_token" } }))?.value;
   await db.auditLog.deleteMany();
   await db.shootAssignment.deleteMany();
   await db.shoot.deleteMany();
@@ -103,7 +105,7 @@ async function main() {
     });
   }
 
-  const token = crypto.randomBytes(24).toString("base64url");
+  const token = existingToken ?? crypto.randomBytes(24).toString("base64url");
   await db.setting.create({ data: { key: "public_calendar_token", value: token } });
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
