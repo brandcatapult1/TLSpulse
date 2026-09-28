@@ -1,4 +1,8 @@
-// Pure conflict rules (Handbook §8.1–8.2). Conflicts only ever warn; nothing here blocks a save.
+// Conflict rules (Handbook §8.1–8.2, updated 28 Sep 2026):
+// - A resource on two shoots whose TIMES overlap is a clash, and a clash blocks saving.
+// - If either shoot has no time, it's only a warning ("untimed"); so is the same person
+//   on the same day at non-overlapping times ("sameDay").
+// - Several shoots on one date are always allowed; that's a warning only.
 import type { ResourceConflict } from "./types";
 
 export type OtherShoot = {
@@ -9,12 +13,18 @@ export type OtherShoot = {
   resources: { id: string; name: string }[];
 };
 
-/** Untimed shoots are treated as all-day, so they overlap anything on that date. */
+/** A start with no end is treated as a one-hour booking. */
+function endOf(start: string, end: string | null) {
+  if (end) return end;
+  const [h, m] = start.split(":").map(Number);
+  const t = Math.min(h * 60 + m + 60, 24 * 60 - 1);
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+}
+
+/** Both shoots must have a start time to overlap; touching edges (12:00–14:00 vs 14:00–16:00) don't. */
 export function timesOverlap(aStart: string | null, aEnd: string | null, bStart: string | null, bEnd: string | null) {
-  if (!aStart || !bStart) return true;
-  const aE = aEnd ?? "23:59";
-  const bE = bEnd ?? "23:59";
-  return aStart < bE && bStart < aE;
+  if (!aStart || !bStart) return false;
+  return aStart < endOf(bStart, bEnd) && bStart < endOf(aStart, aEnd);
 }
 
 export function findResourceConflicts(
@@ -26,13 +36,14 @@ export function findResourceConflicts(
   for (const s of others) {
     for (const r of s.resources) {
       if (!wanted.has(r.id)) continue;
-      out.push({
-        resourceId: r.id,
-        resourceName: r.name,
-        severity: timesOverlap(target.startTime, target.endTime, s.startTime, s.endTime) ? "overlap" : "sameDay",
-        shoot: { id: s.id, brandName: s.brandName, startTime: s.startTime, endTime: s.endTime },
-      });
+      const severity: ResourceConflict["severity"] =
+        !target.startTime || !s.startTime ? "untimed" : timesOverlap(target.startTime, target.endTime, s.startTime, s.endTime) ? "clash" : "sameDay";
+      out.push({ resourceId: r.id, resourceName: r.name, severity, shoot: { id: s.id, brandName: s.brandName, startTime: s.startTime, endTime: s.endTime } });
     }
   }
-  return out.sort((a, b) => (a.severity === b.severity ? a.resourceName.localeCompare(b.resourceName) : a.severity === "overlap" ? -1 : 1));
+  const rank = { clash: 0, untimed: 1, sameDay: 2 } as const;
+  return out.sort((a, b) => rank[a.severity] - rank[b.severity] || a.resourceName.localeCompare(b.resourceName));
 }
+
+export const isClash = (c: ResourceConflict) => c.severity === "clash";
+export const clashKey = (c: ResourceConflict) => `${c.resourceId}:${c.shoot.id}`;

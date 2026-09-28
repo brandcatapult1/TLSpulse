@@ -33,9 +33,14 @@ export function ResourcePicker({
     return () => document.removeEventListener("mousedown", close);
   }, [open]);
 
+  // Worst conflict per person: clash (blocks) > untimed > same day.
   const busy = useMemo(() => {
+    const rank = { clash: 0, untimed: 1, sameDay: 2 } as const;
     const m = new Map<string, ResourceConflict["severity"]>();
-    for (const c of conflicts) if (m.get(c.resourceId) !== "overlap") m.set(c.resourceId, c.severity);
+    for (const c of conflicts) {
+      const cur = m.get(c.resourceId);
+      if (!cur || rank[c.severity] < rank[cur]) m.set(c.resourceId, c.severity);
+    }
     return m;
   }, [conflicts]);
 
@@ -64,10 +69,10 @@ export function ResourcePicker({
               key={id}
               className={clsx(
                 "inline-flex items-center gap-1.5 rounded-full border py-1 pr-1 pl-2.5 text-sm",
-                sev === "overlap" ? "border-warn/50 bg-warn-bg" : "border-line bg-soft",
+                sev === "clash" ? "border-danger/50 bg-danger/10" : sev ? "border-warn/50 bg-warn-bg" : "border-line bg-soft",
               )}
             >
-              {sev && <AlertTriangle size={13} className="text-warn" />}
+              {sev && <AlertTriangle size={13} className={sev === "clash" ? "text-danger" : "text-warn"} />}
               <span className="font-medium">{r?.name ?? "Unknown"}</span>
               <span className="text-xs text-muted">{r?.role}</span>
               <button type="button" aria-label={`Remove ${r?.name}`} onClick={() => toggle(id)} className="grid h-5 w-5 place-items-center rounded-full text-muted hover:bg-line hover:text-ink">
@@ -120,8 +125,8 @@ export function ResourcePicker({
                         {r.teamType === "EXTERNAL" && <span className="ml-1.5 rounded bg-soft px-1 text-[10px] text-muted">External</span>}
                       </span>
                       {sev && (
-                        <span className="inline-flex items-center gap-1 text-xs text-warn">
-                          <AlertTriangle size={12} /> {sev === "overlap" ? "Busy" : "Same day"}
+                        <span className={clsx("inline-flex items-center gap-1 text-xs", sev === "clash" ? "text-danger" : "text-warn")}>
+                          <AlertTriangle size={12} /> {sev === "clash" ? "Booked at this time" : "Same day"}
                         </span>
                       )}
                     </button>

@@ -33,6 +33,7 @@ export function MoveDialog({ move, onCancel, onConfirm }: { move: { shoot: Shoot
   }, [move]);
 
   if (!move) return null;
+  const blocked = (report?.resourceConflicts ?? []).some((c) => c.severity === "clash");
   return (
     <Dialog
       open
@@ -43,7 +44,7 @@ export function MoveDialog({ move, onCancel, onConfirm }: { move: { shoot: Shoot
           <Button variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={onConfirm} autoFocus>
+          <Button onClick={onConfirm} autoFocus disabled={!report || blocked}>
             Move
           </Button>
         </>

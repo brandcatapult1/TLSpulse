@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
+import { clashMessage } from "@/lib/clash-message";
+import { isClash } from "@/lib/conflicts";
 import { db } from "@/lib/db";
 import { fmtShort, isYmd, toDbDate } from "@/lib/dates";
 import { checkConflicts, listShoots, shootInclude, toShootDTO } from "@/lib/shoots";
@@ -28,6 +30,11 @@ export async function POST(req: NextRequest) {
 
   // Computed before insert so the warnings describe what was already there.
   const warnings = await checkConflicts({ ...input, resourceIds });
+  // Same person on overlapping times is not allowed (other conflicts only warn).
+  const clashes = input.status === "CANCELLED" ? [] : warnings.resourceConflicts.filter(isClash);
+  if (clashes.length) {
+    return NextResponse.json({ error: clashMessage(clashes, input.date), code: "RESOURCE_CLASH", clashes }, { status: 409 });
+  }
 
   const shoot = await db.shoot.create({
     data: {

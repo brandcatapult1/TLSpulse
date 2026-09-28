@@ -8,7 +8,7 @@ import { STATUS_META, TYPE_META } from "@/lib/ui-meta";
 import { Drawer } from "../Overlay";
 import { Button, FormError, Input, Label, Select, Textarea } from "../ui";
 import { BrandCombobox } from "./BrandCombobox";
-import { DateConflictNote, ResourceConflictNotes } from "./ConflictNotes";
+import { BookedSlots, DateConflictNote, ResourceConflictNotes } from "./ConflictNotes";
 import { ResourcePicker } from "./ResourcePicker";
 import { useMasters } from "./useMasters";
 
@@ -96,6 +96,8 @@ export function ShootForm({
   }, [f?.date, f?.startTime, f?.endTime, allIds, shootId, open]);
 
   if (!target || !f) return null;
+  const clashes = (report?.resourceConflicts ?? []).filter((c) => c.severity === "clash" && f.resourceIds.includes(c.resourceId));
+  const blocked = clashes.length > 0 && f.status !== "CANCELLED";
   const set = <K extends keyof State>(k: K, v: State[K]) => {
     setF((prev) => (prev ? { ...prev, [k]: v } : prev));
     setMissing((m) => {
@@ -115,6 +117,7 @@ export function ShootForm({
     setMissing(miss);
     if (miss.size) return setError("Fill in the highlighted fields.");
     if (f.startTime && f.endTime && f.endTime <= f.startTime) return setError("End time must be after start time.");
+    if (blocked) return setError("This time is already booked for someone on the crew. Change the time or the crew.");
     if (!f.resourceIds.length && !allowNoCrew && f.status !== "CANCELLED") {
       setError(null);
       return setNeedCrewConfirm(true);
@@ -159,7 +162,7 @@ export function ShootForm({
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={() => submit()} disabled={saving}>
+          <Button onClick={() => submit()} disabled={saving || blocked} title={blocked ? "Time already booked for someone on the crew" : undefined}>
             {saving ? "Saving…" : isEdit ? "Save changes" : "Create Shoot"}
           </Button>
         </>
@@ -231,6 +234,7 @@ export function ShootForm({
             <span className="text-muted">—</span>
             <Input type="time" step={900} aria-label="End time" value={f.endTime} onChange={(e) => set("endTime", e.target.value)} />
           </div>
+          <BookedSlots report={report} selected={f.resourceIds} />
         </div>
 
         <div>

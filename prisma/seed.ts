@@ -76,7 +76,7 @@ async function main() {
     [18, "ITC Hotels", R, "14:00", "16:00", "ITC Maurya", ["Rohit", "Karan"]], // Rohit double-booked, times don't overlap
     [18, "ABC", S, "18:00", "21:00", "Cyber Hub", ["Rahul", "Priya"]],
     [18, "Nykaa", R, null, null, null, ["Aditya"]],
-    [18, "Marriott", R, "11:00", "12:00", "Sheraton Saket", ["Rohit"]], // Rohit overlap conflict
+    [18, "Marriott", R, "11:00", "12:00", "Sheraton Saket", ["Aditya"]], // Aditya also on the untimed Nykaa shoot → warning only
     [19, "ITC Hotels", R, null, null, "ITC Maratha", ["Aman"], ShootStatus.RESCHEDULED],
     [20, "ABC", S, "12:00", "16:00", "Lodhi Garden", ["Karan", "Rahul"]],
     [22, "Marriott", S, "10:00", "13:00", "Aerocity, New Delhi", ["Rohit", "Neha"]],

@@ -36,7 +36,8 @@ export type ResourceDTO = {
 export type ResourceConflict = {
   resourceId: string;
   resourceName: string;
-  severity: "overlap" | "sameDay";
+  /** clash = same person, overlapping times (blocks saving); the others only warn. */
+  severity: "clash" | "untimed" | "sameDay";
   shoot: { id: string; brandName: string; startTime: string | null; endTime: string | null };
 };
 
