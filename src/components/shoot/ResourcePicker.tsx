@@ -35,7 +35,7 @@ export function ResourcePicker({
 
   // Worst conflict per person: clash (blocks) > untimed > same day.
   const busy = useMemo(() => {
-    const rank = { clash: 0, untimed: 1, sameDay: 2 } as const;
+    const rank = { clash: 0, untimed: 1, sameDay: 2, sameVisit: 3 } as const;
     const m = new Map<string, ResourceConflict["severity"]>();
     for (const c of conflicts) {
       const cur = m.get(c.resourceId);
@@ -69,10 +69,10 @@ export function ResourcePicker({
               key={id}
               className={clsx(
                 "inline-flex items-center gap-1.5 rounded-full border py-1 pr-1 pl-2.5 text-sm",
-                sev === "clash" ? "border-danger/50 bg-danger/10" : sev ? "border-warn/50 bg-warn-bg" : "border-line bg-soft",
+                sev === "clash" ? "border-danger/50 bg-danger/10" : sev && sev !== "sameVisit" ? "border-warn/50 bg-warn-bg" : "border-line bg-soft",
               )}
             >
-              {sev && <AlertTriangle size={13} className={sev === "clash" ? "text-danger" : "text-warn"} />}
+              {sev && sev !== "sameVisit" && <AlertTriangle size={13} className={sev === "clash" ? "text-danger" : "text-warn"} />}
               <span className="font-medium">{r?.name ?? "Unknown"}</span>
               <span className="text-xs text-muted">{r?.role}</span>
               <button type="button" aria-label={`Remove ${r?.name}`} onClick={() => toggle(id)} className="grid h-5 w-5 place-items-center rounded-full text-muted hover:bg-line hover:text-ink">
@@ -124,10 +124,14 @@ export function ResourcePicker({
                         <span className="font-medium">{r.name}</span> <span className="text-xs text-muted">{r.role}</span>
                         {r.teamType === "EXTERNAL" && <span className="ml-1.5 rounded bg-soft px-1 text-[10px] text-muted">External</span>}
                       </span>
-                      {sev && (
-                        <span className={clsx("inline-flex items-center gap-1 text-xs", sev === "clash" ? "text-danger" : "text-warn")}>
-                          <AlertTriangle size={12} /> {sev === "clash" ? "Booked at this time" : "Same day"}
-                        </span>
+                      {sev === "sameVisit" ? (
+                        <span className="text-xs text-muted">Same brand &amp; venue</span>
+                      ) : (
+                        sev && (
+                          <span className={clsx("inline-flex items-center gap-1 text-xs", sev === "clash" ? "text-danger" : "text-warn")}>
+                            <AlertTriangle size={12} /> {sev === "clash" ? "Booked at this time" : "Same day"}
+                          </span>
+                        )
                       )}
                     </button>
                   );

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findResourceConflicts, timesOverlap } from "@/lib/conflicts";
+import { findResourceConflicts, sameLocation, timesOverlap } from "@/lib/conflicts";
 
 describe("timesOverlap", () => {
   it("needs both shoots to have a time", () => {
@@ -20,9 +20,9 @@ describe("timesOverlap", () => {
 
 describe("findResourceConflicts", () => {
   const others = [
-    { id: "a", brandName: "Marriott", startTime: "10:00", endTime: "14:00", resources: [{ id: "rohit", name: "Rohit" }] },
-    { id: "b", brandName: "ITC", startTime: "15:00", endTime: "16:00", resources: [{ id: "aman", name: "Aman" }] },
-    { id: "c", brandName: "Nykaa", startTime: null, endTime: null, resources: [{ id: "neha", name: "Neha" }] },
+    { id: "a", brandId: "m", brandName: "Marriott", location: "Aerocity, New Delhi", startTime: "10:00", endTime: "14:00", resources: [{ id: "rohit", name: "Rohit" }] },
+    { id: "b", brandId: "i", brandName: "ITC", location: null, startTime: "15:00", endTime: "16:00", resources: [{ id: "aman", name: "Aman" }] },
+    { id: "c", brandId: "n", brandName: "Nykaa", location: null, startTime: null, endTime: null, resources: [{ id: "neha", name: "Neha" }] },
   ];
   it("only reports selected resources", () => {
     expect(findResourceConflicts({ startTime: "11:00", endTime: "13:00", resourceIds: ["karan"] }, others)).toEqual([]);
@@ -38,5 +38,21 @@ describe("findResourceConflicts", () => {
   it("a new shoot without a time never clashes", () => {
     const r = findResourceConflicts({ startTime: null, endTime: null, resourceIds: ["rohit"] }, others);
     expect(r.map((c) => c.severity)).toEqual(["untimed"]);
+  });
+  it("same brand at the same location may share crew at overlapping times", () => {
+    const at = (brandId: string, location: string | null) =>
+      findResourceConflicts({ startTime: "11:00", endTime: "13:00", resourceIds: ["rohit"], brandId, location }, others)[0].severity;
+    expect(at("m", "aerocity  new delhi")).toBe("sameVisit");
+    expect(at("m", "JW Marriott, Aerocity")).toBe("clash"); // same brand, different place
+    expect(at("i", "Aerocity, New Delhi")).toBe("clash"); // same place, different brand
+    expect(at("m", null)).toBe("clash"); // no location → can't tell it's the same visit
+  });
+});
+
+describe("sameLocation", () => {
+  it("ignores case, spaces and punctuation; empty never matches", () => {
+    expect(sameLocation("Aerocity, New Delhi", "aerocity new-delhi")).toBe(true);
+    expect(sameLocation("", "")).toBe(false);
+    expect(sameLocation(null, null)).toBe(false);
   });
 });

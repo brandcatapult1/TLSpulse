@@ -2,12 +2,16 @@
 // - A resource on two shoots whose TIMES overlap is a clash, and a clash blocks saving.
 // - If either shoot has no time, it's only a warning ("untimed"); so is the same person
 //   on the same day at non-overlapping times ("sameDay").
+// - Exception: overlapping shoots for the SAME brand at the SAME location may share crew
+//   (e.g. a Social Media Shoot and a Real Time Visit at one venue) — note only ("sameVisit").
 // - Several shoots on one date are always allowed; that's a warning only.
 import type { ResourceConflict } from "./types";
 
 export type OtherShoot = {
   id: string;
+  brandId: string;
   brandName: string;
+  location: string | null;
   startTime: string | null;
   endTime: string | null;
   resources: { id: string; name: string }[];
@@ -27,8 +31,14 @@ export function timesOverlap(aStart: string | null, aEnd: string | null, bStart:
   return aStart < endOf(bStart, bEnd) && bStart < endOf(aStart, aEnd);
 }
 
+/** "Aerocity, New Delhi" == "aerocity new delhi". Empty locations never match. */
+export function sameLocation(a: string | null | undefined, b: string | null | undefined) {
+  const norm = (s: string | null | undefined) => (s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return norm(a) !== "" && norm(a) === norm(b);
+}
+
 export function findResourceConflicts(
-  target: { startTime: string | null; endTime: string | null; resourceIds: string[] },
+  target: { startTime: string | null; endTime: string | null; resourceIds: string[]; brandId?: string | null; location?: string | null },
   others: OtherShoot[],
 ): ResourceConflict[] {
   const wanted = new Set(target.resourceIds);
@@ -36,12 +46,14 @@ export function findResourceConflicts(
   for (const s of others) {
     for (const r of s.resources) {
       if (!wanted.has(r.id)) continue;
+      const overlap = timesOverlap(target.startTime, target.endTime, s.startTime, s.endTime);
+      const sameVisit = !!target.brandId && target.brandId === s.brandId && sameLocation(target.location, s.location);
       const severity: ResourceConflict["severity"] =
-        !target.startTime || !s.startTime ? "untimed" : timesOverlap(target.startTime, target.endTime, s.startTime, s.endTime) ? "clash" : "sameDay";
+        !target.startTime || !s.startTime ? "untimed" : !overlap ? "sameDay" : sameVisit ? "sameVisit" : "clash";
       out.push({ resourceId: r.id, resourceName: r.name, severity, shoot: { id: s.id, brandName: s.brandName, startTime: s.startTime, endTime: s.endTime } });
     }
   }
-  const rank = { clash: 0, untimed: 1, sameDay: 2 } as const;
+  const rank = { clash: 0, untimed: 1, sameDay: 2, sameVisit: 3 } as const;
   return out.sort((a, b) => rank[a.severity] - rank[b.severity] || a.resourceName.localeCompare(b.resourceName));
 }
 

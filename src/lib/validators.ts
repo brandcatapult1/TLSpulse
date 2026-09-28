@@ -41,6 +41,8 @@ export const ShootPatch = z.object(shootFields).partial().refine(endAfterStart, 
 
 export const ConflictCheck = z.object({
   date: z.string().refine(isYmd),
+  brandId: z.string().nullish(),
+  location: z.string().max(200).nullish(),
   startTime: time,
   endTime: time,
   resourceIds: z.array(z.string()).default([]),

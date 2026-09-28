@@ -19,6 +19,8 @@ export function MoveDialog({ move, onCancel, onConfirm }: { move: { shoot: Shoot
     api<ConflictReport>("/api/conflicts/check", {
       body: {
         date: move.to,
+        brandId: move.shoot.brandId,
+        location: move.shoot.location,
         startTime: move.shoot.startTime,
         endTime: move.shoot.endTime,
         resourceIds: move.shoot.resources.map((r) => r.id),

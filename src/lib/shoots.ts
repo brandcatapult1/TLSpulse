@@ -52,6 +52,8 @@ export async function getShoot(id: string) {
 /** Everything on a date that could clash: live (non-cancelled, non-deleted) shoots. */
 export async function checkConflicts(input: {
   date: string;
+  brandId?: string | null;
+  location?: string | null;
   startTime: string | null;
   endTime: string | null;
   resourceIds: string[];

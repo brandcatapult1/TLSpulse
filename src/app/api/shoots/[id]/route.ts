@@ -77,7 +77,15 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const warnings =
     status === "CANCELLED"
       ? { dateShoots: [], resourceConflicts: [] }
-      : await checkConflicts({ date: nextDate, startTime: nextStart, endTime: nextEnd, resourceIds: nextResourceIds, excludeShootId: id });
+      : await checkConflicts({
+          date: nextDate,
+          brandId: patch.brandId ?? prev.brandId,
+          location: patch.location !== undefined ? patch.location : prev.location,
+          startTime: nextStart,
+          endTime: nextEnd,
+          resourceIds: nextResourceIds,
+          excludeShootId: id,
+        });
 
   // Block only clashes this edit would create, so older overlapping data can still be
   // edited (e.g. notes) without first being untangled.
@@ -88,7 +96,15 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         ? new Set<string>()
         : new Set(
             (
-              await checkConflicts({ date: prev.date, startTime: prev.startTime, endTime: prev.endTime, resourceIds: prev.resources.map((r) => r.id), excludeShootId: id })
+              await checkConflicts({
+                date: prev.date,
+                brandId: prev.brandId,
+                location: prev.location,
+                startTime: prev.startTime,
+                endTime: prev.endTime,
+                resourceIds: prev.resources.map((r) => r.id),
+                excludeShootId: id,
+              })
             ).resourceConflicts
               .filter(isClash)
               .map(clashKey),

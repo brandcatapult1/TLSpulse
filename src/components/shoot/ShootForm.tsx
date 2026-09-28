@@ -84,7 +84,15 @@ export function ShootForm({
     const t = setTimeout(async () => {
       try {
         const r = await api<ConflictReport>("/api/conflicts/check", {
-          body: { date: f.date, startTime: f.startTime || null, endTime: f.endTime || null, resourceIds: allIds, excludeShootId: shootId },
+          body: {
+            date: f.date,
+            brandId: f.brandId || null,
+            location: f.location || null,
+            startTime: f.startTime || null,
+            endTime: f.endTime || null,
+            resourceIds: allIds,
+            excludeShootId: shootId,
+          },
         });
         if (!ctrl.cancelled) setReport(r);
       } catch {}
@@ -93,7 +101,7 @@ export function ShootForm({
       ctrl.cancelled = true;
       clearTimeout(t);
     };
-  }, [f?.date, f?.startTime, f?.endTime, allIds, shootId, open]);
+  }, [f?.date, f?.startTime, f?.endTime, f?.brandId, f?.location, allIds, shootId, open]);
 
   if (!target || !f) return null;
   const clashes = (report?.resourceConflicts ?? []).filter((c) => c.severity === "clash" && f.resourceIds.includes(c.resourceId));
