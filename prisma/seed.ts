@@ -4,9 +4,9 @@ import { PrismaClient, ShootType, ShootStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import fs from "fs";
+import { tempPassword } from "../src/lib/passwords";
 
 const db = new PrismaClient();
-const tempPw = () => crypto.randomBytes(6).toString("base64url");
 const dbDate = (ymd: string) => new Date(`${ymd}T00:00:00Z`);
 
 async function main() {
@@ -19,8 +19,8 @@ async function main() {
   await db.user.deleteMany();
   await db.setting.deleteMany();
 
-  const adminPw = tempPw();
-  const userPw = tempPw();
+  const adminPw = tempPassword();
+  const userPw = tempPassword();
   const admin = await db.user.create({
     data: { name: "Vaibhav", email: "vaibhav@tls.local", role: "ADMIN", passwordHash: await bcrypt.hash(adminPw, 10) },
   });
@@ -109,7 +109,8 @@ async function main() {
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   fs.writeFileSync(
     "seed-credentials.local.txt",
-    `TLS Pulse — local seed credentials (temporary; you'll be asked to change them on first login)\n\n` +
+    `TLS Pulse — local logins (created ${new Date().toLocaleString("en-IN")})\n` +
+      `Re-running the seed replaces these. You'll be asked to set your own password on first login.\n\n` +
       `Admin  vaibhav@tls.local  ${adminPw}\nUser   dhruv@tls.local    ${userPw}\n\nPublic calendar: ${appUrl}/p/${token}\n`,
   );
   console.log(`Seeded ${rows.length} shoots for ${ym}. Credentials → seed-credentials.local.txt`);
