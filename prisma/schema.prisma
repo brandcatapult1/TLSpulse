@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum ActiveState {
+  ACTIVE
+  INACTIVE
+}
+
+enum ShootType {
+  SOCIAL_MEDIA
+  REAL_TIME_VISIT
+}
+
+enum ShootStatus {
+  PLANNED
+  RESCHEDULED
+  CANCELLED
+}
+
+enum Engagement {
+  INTERNAL
+  EXTERNAL
+}
+
+model User {
+  id           String      @id @default(cuid())
+  name         String
+  email        String      @unique
+  passwordHash String
+  mustChangePw Boolean     @default(true)
+  role         Role        @default(USER)
+  status       ActiveState @default(ACTIVE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Brand {
+  id           String      @id @default(cuid())
+  name         String      @unique
+  companyGroup String?
+  status       ActiveState @default(ACTIVE)
+  shoots       Shoot[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Team {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  status    ActiveState @default(ACTIVE)
+  resources Resource[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model Resource {
+  id          String            @id @default(cuid())
+  name        String
+  role        String
+  teamId      String
+  team        Team              @relation(fields: [teamId], references: [id])
+  engagement  Engagement        @default(INTERNAL)
+  status      ActiveState       @default(ACTIVE)
+  assignments ShootAssignment[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model Shoot {
+  id          String            @id @default(cuid())
+  brandId     String
+  brand       Brand             @relation(fields: [brandId], references: [id])
+  shootType   ShootType
+  date        DateTime          @db.Date
+  startTime   String?
+  endTime     String?
+  location    String?
+  status      ShootStatus       @default(PLANNED)
+  notes       String?
+  assignments ShootAssignment[]
+  createdById String
+  updatedById String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+
+  @@index([date])
+}
+
+model ShootAssignment {
+  id          String   @id @default(cuid())
+  shootId     String
+  shoot       Shoot    @relation(fields: [shootId], references: [id], onDelete: Cascade)
+  resourceId  String
+  resource    Resource @relation(fields: [resourceId], references: [id])
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@unique([shootId, resourceId])
+  @@index([resourceId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  entity    String
+  entityId  String
+  summary   String
+  diff      Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
