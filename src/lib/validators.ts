@@ -43,6 +43,7 @@ export const ConflictCheck = z.object({
   date: z.string().refine(isYmd),
   brandId: z.string().nullish(),
   location: z.string().max(200).nullish(),
+  shootType: z.enum(["SOCIAL_MEDIA", "REAL_TIME_VISIT"]).nullish(),
   startTime: time,
   endTime: time,
   resourceIds: z.array(z.string()).default([]),

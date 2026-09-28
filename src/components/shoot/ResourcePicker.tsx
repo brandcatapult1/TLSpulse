@@ -3,6 +3,8 @@
 import clsx from "clsx";
 import { AlertTriangle, Check, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { shootPlace } from "@/lib/clash-message";
+import { fmtTimeRange } from "@/lib/dates";
 import type { ResourceConflict, ResourceDTO } from "@/lib/types";
 
 /** Multi-select of resources grouped by team, flagging anyone already booked that day (PRD §20–21). */
@@ -41,6 +43,13 @@ export function ResourcePicker({
       const cur = m.get(c.resourceId);
       if (!cur || rank[c.severity] < rank[cur]) m.set(c.resourceId, c.severity);
     }
+    return m;
+  }, [conflicts]);
+
+  // First blocking booking per person, so the picker can say where they are.
+  const clashWith = useMemo(() => {
+    const m = new Map<string, ResourceConflict>();
+    for (const c of conflicts) if (c.severity === "clash" && !m.has(c.resourceId)) m.set(c.resourceId, c);
     return m;
   }, [conflicts]);
 
@@ -112,12 +121,23 @@ export function ResourcePicker({
                 {list.map((r) => {
                   const on = value.includes(r.id);
                   const sev = busy.get(r.id);
+                  const booked = clashWith.get(r.id);
+                  // Booked on another brand/location at an overlapping time: can't be picked
+                  // (already-picked people can still be removed).
+                  const locked = !!booked && !on;
                   return (
                     <button
                       key={r.id}
                       type="button"
+                      disabled={locked}
+                      aria-disabled={locked}
+                      title={booked ? `Booked on ${shootPlace(booked)} · ${fmtTimeRange(booked.shoot.startTime, booked.shoot.endTime)}` : undefined}
                       onClick={() => toggle(r.id)}
-                      className={clsx("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm hover:bg-soft", on && "bg-soft/60")}
+                      className={clsx(
+                        "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm",
+                        locked ? "cursor-not-allowed opacity-55" : "hover:bg-soft",
+                        on && "bg-soft/60",
+                      )}
                     >
                       <span className={clsx("grid h-4 w-4 shrink-0 place-items-center rounded border", on ? "border-ink bg-ink text-surface" : "border-line")}>{on && <Check size={11} />}</span>
                       <span className="flex-1">
@@ -125,11 +145,12 @@ export function ResourcePicker({
                         {r.teamType === "EXTERNAL" && <span className="ml-1.5 rounded bg-soft px-1 text-[10px] text-muted">External</span>}
                       </span>
                       {sev === "sameVisit" ? (
-                        <span className="text-xs text-muted">Same brand · same location</span>
+                        <span className="text-xs text-muted">Same brand &amp; location, other type</span>
                       ) : (
                         sev && (
-                          <span className={clsx("inline-flex items-center gap-1 text-xs", sev === "clash" ? "text-danger" : "text-warn")}>
-                            <AlertTriangle size={12} /> {sev === "clash" ? "Booked at this time" : "Same day"}
+                          <span className={clsx("inline-flex items-center gap-1 text-right text-xs", sev === "clash" ? "text-danger" : "text-warn")}>
+                            <AlertTriangle size={12} className="shrink-0" />
+                            {sev === "clash" && booked ? `Booked: ${booked.shoot.brandName} · ${fmtTimeRange(booked.shoot.startTime, booked.shoot.endTime)}` : "Same day"}
                           </span>
                         )
                       )}

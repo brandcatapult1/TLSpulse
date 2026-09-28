@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { findResourceConflicts } from "./conflicts";
 import { db } from "./db";
 import { fromDbDate, sortShoots, toDbDate } from "./dates";
-import type { ConflictReport, ShootDTO } from "./types";
+import type { ConflictReport, ShootDTO, ShootType } from "./types";
 
 export const shootInclude = {
   brand: { select: { id: true, name: true } },
@@ -54,6 +54,7 @@ export async function checkConflicts(input: {
   date: string;
   brandId?: string | null;
   location?: string | null;
+  shootType?: ShootType | null;
   startTime: string | null;
   endTime: string | null;
   resourceIds: string[];

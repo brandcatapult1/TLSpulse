@@ -3,6 +3,7 @@ import type { ResourceConflict } from "./types";
 
 export const CLASH_REASON: Record<NonNullable<ResourceConflict["reason"]>, string> = {
   differentBrand: "different brand",
+  sameType: "same shoot type — only a Social Media Shoot + Real Time Visit pair can share crew",
   differentLocation: "same brand, different location",
   noLocation: "location missing — add the same location to both if it's one visit",
 };
@@ -15,5 +16,5 @@ export function clashMessage(clashes: ResourceConflict[], date: string) {
   const parts = clashes.map(
     (c) => `${c.resourceName} is already booked on ${shootPlace(c)} (${fmtTimeRange(c.shoot.startTime, c.shoot.endTime)}${c.reason ? `; ${CLASH_REASON[c.reason]}` : ""})`,
   );
-  return `${parts.join("; ")} on ${fmtDayMonth(date)}. Crew can only overlap for the same brand at the same location — change the time, crew, or location.`;
+  return `${parts.join("; ")} on ${fmtDayMonth(date)}. Crew can only overlap for the same brand, at the same location, on the other shoot type — change the time or the crew.`;
 }

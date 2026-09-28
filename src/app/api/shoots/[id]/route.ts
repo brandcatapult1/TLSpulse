@@ -80,6 +80,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       : await checkConflicts({
           date: nextDate,
           brandId: patch.brandId ?? prev.brandId,
+          shootType: patch.shootType ?? prev.shootType,
           location: patch.location !== undefined ? patch.location : prev.location,
           startTime: nextStart,
           endTime: nextEnd,
@@ -99,6 +100,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
               await checkConflicts({
                 date: prev.date,
                 brandId: prev.brandId,
+                shootType: prev.shootType,
                 location: prev.location,
                 startTime: prev.startTime,
                 endTime: prev.endTime,

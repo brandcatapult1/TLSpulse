@@ -20,6 +20,7 @@ export function MoveDialog({ move, onCancel, onConfirm }: { move: { shoot: Shoot
       body: {
         date: move.to,
         brandId: move.shoot.brandId,
+        shootType: move.shoot.shootType,
         location: move.shoot.location,
         startTime: move.shoot.startTime,
         endTime: move.shoot.endTime,

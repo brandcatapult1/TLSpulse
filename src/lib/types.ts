@@ -42,8 +42,8 @@ export type ResourceConflict = {
    *  brand + location, so the crew may be shared. untimed/sameDay only warn. */
   severity: "clash" | "untimed" | "sameDay" | "sameVisit";
   /** Why a clash isn't covered by the same-brand-and-location exception. */
-  reason?: "differentBrand" | "differentLocation" | "noLocation";
-  shoot: { id: string; brandName: string; location: string | null; startTime: string | null; endTime: string | null };
+  reason?: "differentBrand" | "sameType" | "differentLocation" | "noLocation";
+  shoot: { id: string; brandName: string; shootType: ShootType; location: string | null; startTime: string | null; endTime: string | null };
 };
 
 export type ConflictReport = {

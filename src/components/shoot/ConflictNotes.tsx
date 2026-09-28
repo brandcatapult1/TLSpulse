@@ -40,7 +40,8 @@ export function ResourceConflictNotes({ report, selected, date }: { report: Conf
             ))}
           </ul>
           <p className="mt-1 text-ink/70">
-            Crew can overlap only when both shoots are the <b>same brand</b> at the <b>same location</b>. Otherwise pick another time or deploy someone else.
+            Crew can overlap only for the <b>same brand</b>, at the <b>same location</b>, on the <b>other shoot type</b> (Social Media + Real Time Visit). Otherwise pick another
+            time or deploy someone else.
           </p>
         </div>
       )}
@@ -51,7 +52,7 @@ export function ResourceConflictNotes({ report, selected, date }: { report: Conf
               <Info size={14} className="mt-0.5 shrink-0" />
               <span>
                 <b className="text-ink">{c.resourceName}</b> is also on {shootPlace(c)} ({fmtTimeRange(c.shoot.startTime, c.shoot.endTime)}) — allowed:{" "}
-                <b className="text-ink">same brand · same location</b>.
+                <b className="text-ink">same brand · same location · other shoot type</b>.
               </span>
             </li>
           ))}

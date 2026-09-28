@@ -20,9 +20,9 @@ describe("timesOverlap", () => {
 
 describe("findResourceConflicts", () => {
   const others = [
-    { id: "a", brandId: "m", brandName: "Marriott", location: "Aerocity, New Delhi", startTime: "10:00", endTime: "14:00", resources: [{ id: "rohit", name: "Rohit" }] },
-    { id: "b", brandId: "i", brandName: "ITC", location: null, startTime: "15:00", endTime: "16:00", resources: [{ id: "aman", name: "Aman" }] },
-    { id: "c", brandId: "n", brandName: "Nykaa", location: null, startTime: null, endTime: null, resources: [{ id: "neha", name: "Neha" }] },
+    { id: "a", shootType: "SOCIAL_MEDIA" as const, brandId: "m", brandName: "Marriott", location: "Aerocity, New Delhi", startTime: "10:00", endTime: "14:00", resources: [{ id: "rohit", name: "Rohit" }] },
+    { id: "b", shootType: "SOCIAL_MEDIA" as const, brandId: "i", brandName: "ITC", location: null, startTime: "15:00", endTime: "16:00", resources: [{ id: "aman", name: "Aman" }] },
+    { id: "c", shootType: "REAL_TIME_VISIT" as const, brandId: "n", brandName: "Nykaa", location: null, startTime: null, endTime: null, resources: [{ id: "neha", name: "Neha" }] },
   ];
   it("only reports selected resources", () => {
     expect(findResourceConflicts({ startTime: "11:00", endTime: "13:00", resourceIds: ["karan"] }, others)).toEqual([]);
@@ -39,19 +39,21 @@ describe("findResourceConflicts", () => {
     const r = findResourceConflicts({ startTime: null, endTime: null, resourceIds: ["rohit"] }, others);
     expect(r.map((c) => c.severity)).toEqual(["untimed"]);
   });
-  it("same brand at the same location may share crew at overlapping times", () => {
-    const at = (brandId: string, location: string | null) =>
-      findResourceConflicts({ startTime: "11:00", endTime: "13:00", resourceIds: ["rohit"], brandId, location }, others)[0].severity;
+  it("same brand + same location + other shoot type may share crew", () => {
+    const at = (brandId: string, location: string | null, shootType: "SOCIAL_MEDIA" | "REAL_TIME_VISIT" = "REAL_TIME_VISIT") =>
+      findResourceConflicts({ startTime: "11:00", endTime: "13:00", resourceIds: ["rohit"], brandId, location, shootType }, others)[0].severity;
     expect(at("m", "aerocity  new delhi")).toBe("sameVisit");
+    expect(at("m", "Aerocity, New Delhi", "SOCIAL_MEDIA")).toBe("clash"); // same type
     expect(at("m", "JW Marriott, Aerocity")).toBe("clash"); // same brand, different place
     expect(at("i", "Aerocity, New Delhi")).toBe("clash"); // same place, different brand
     expect(at("m", null)).toBe("clash"); // no location → can't tell it's the same visit
   });
   it("explains why a clash isn't the same visit", () => {
-    const why = (brandId: string, location: string | null) =>
-      findResourceConflicts({ startTime: "11:00", endTime: "13:00", resourceIds: ["rohit"], brandId, location }, others)[0].reason;
+    const why = (brandId: string, location: string | null, shootType: "SOCIAL_MEDIA" | "REAL_TIME_VISIT" = "REAL_TIME_VISIT") =>
+      findResourceConflicts({ startTime: "11:00", endTime: "13:00", resourceIds: ["rohit"], brandId, location, shootType }, others)[0].reason;
     expect(why("i", "Aerocity, New Delhi")).toBe("differentBrand");
     expect(why("m", "Saket")).toBe("differentLocation");
+    expect(why("m", "Aerocity, New Delhi", "SOCIAL_MEDIA")).toBe("sameType");
     expect(why("m", null)).toBe("noLocation");
     expect(why("m", "Aerocity New Delhi")).toBeUndefined();
   });
