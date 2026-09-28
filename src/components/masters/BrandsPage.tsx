@@ -34,9 +34,11 @@ export function BrandsPage({ isAdmin }: { isAdmin: boolean }) {
         title="Brands"
         subtitle={brands ? `${brands.length - inactiveCount} active brands` : " "}
         actions={
-          <Button onClick={() => setEditing("new")}>
-            <Plus size={16} /> Add brand
-          </Button>
+          isAdmin && (
+            <Button onClick={() => setEditing("new")}>
+              <Plus size={16} /> Add brand
+            </Button>
+          )
         }
       />
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -54,7 +56,10 @@ export function BrandsPage({ isAdmin }: { isAdmin: boolean }) {
       {!brands ? (
         <Skeleton className="h-64" />
       ) : list.length === 0 ? (
-        <EmptyState title={q ? `No brands match “${q}”` : "No brands yet"} hint="Brands can also be created straight from the New Shoot form." />
+        <EmptyState
+          title={q ? `No brands match “${q}”` : "No brands yet"}
+          hint={isAdmin ? "Admins can also create brands straight from the New Shoot form." : "Ask an admin to add brands."}
+        />
       ) : (
         <Table
           head={

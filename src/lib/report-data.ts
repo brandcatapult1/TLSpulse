@@ -12,6 +12,9 @@ export async function loadPeriod(from: string, to: string): Promise<ReportShoot[
       date: true,
       shootType: true,
       status: true,
+      startTime: true,
+      endTime: true,
+      location: true,
       brand: { select: { id: true, name: true } },
       assignments: { select: { resource: { select: { id: true, name: true, role: true, team: { select: { id: true, name: true, type: true } } } } } },
     },
@@ -23,6 +26,9 @@ export async function loadPeriod(from: string, to: string): Promise<ReportShoot[
     brandName: s.brand.name,
     shootType: s.shootType,
     status: s.status,
+    startTime: s.startTime,
+    endTime: s.endTime,
+    location: s.location,
     resources: s.assignments.map(({ resource: r }) => ({ id: r.id, name: r.name, role: r.role, teamId: r.team.id, teamName: r.team.name, teamType: r.team.type })),
   }));
 }

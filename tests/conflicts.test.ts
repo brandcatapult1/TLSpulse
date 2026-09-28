@@ -47,6 +47,14 @@ describe("findResourceConflicts", () => {
     expect(at("i", "Aerocity, New Delhi")).toBe("clash"); // same place, different brand
     expect(at("m", null)).toBe("clash"); // no location → can't tell it's the same visit
   });
+  it("explains why a clash isn't the same visit", () => {
+    const why = (brandId: string, location: string | null) =>
+      findResourceConflicts({ startTime: "11:00", endTime: "13:00", resourceIds: ["rohit"], brandId, location }, others)[0].reason;
+    expect(why("i", "Aerocity, New Delhi")).toBe("differentBrand");
+    expect(why("m", "Saket")).toBe("differentLocation");
+    expect(why("m", null)).toBe("noLocation");
+    expect(why("m", "Aerocity New Delhi")).toBeUndefined();
+  });
 });
 
 describe("sameLocation", () => {

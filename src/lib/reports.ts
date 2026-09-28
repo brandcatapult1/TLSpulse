@@ -9,6 +9,9 @@ export type ReportShoot = {
   brandName: string;
   shootType: ShootType;
   status: ShootStatus;
+  startTime: string | null;
+  endTime: string | null;
+  location: string | null;
   resources: { id: string; name: string; role: string; teamId: string; teamName: string; teamType: "INTERNAL" | "EXTERNAL" }[];
 };
 
@@ -77,22 +80,50 @@ export function buildReport(all: ReportShoot[], f: ReportFilters) {
   }
 
   const desc = <T extends { name: string }>(key: (x: T) => number) => (a: T, b: T) => key(b) - key(a) || a.name.localeCompare(b.name);
+  const unassigned = counted.filter((s) => s.resources.length === 0).sort(byDateTime).map(row);
   return {
-    overview: { ...overview, cancelled, resourcesUsed: usedResources.size, unassigned: counted.filter((s) => s.resources.length === 0).length },
+    overview: { ...overview, cancelled, resourcesUsed: usedResources.size, unassigned: unassigned.length },
+    unassigned,
     byResource: [...byResource.values()].sort(desc((x) => x.total)),
     byTeam: [...byTeam.values()].map(({ shoots, ...t }) => ({ ...t, shoots: shoots.size })).sort(desc((x) => x.assignments)),
     byBrand: [...byBrand.values()].sort(desc((x) => x.total)),
   };
 }
 
+/** Date, then timed before untimed, then start time. */
+const byDateTime = (a: ReportShoot, b: ReportShoot) =>
+  a.date.localeCompare(b.date) || (a.startTime ? (b.startTime ? a.startTime.localeCompare(b.startTime) : -1) : b.startTime ? 1 : 0) || a.brandName.localeCompare(b.brandName);
+
+const row = (s: ReportShoot) => ({
+  id: s.id,
+  date: s.date,
+  startTime: s.startTime,
+  endTime: s.endTime,
+  location: s.location,
+  brandName: s.brandName,
+  shootType: s.shootType,
+  status: s.status,
+});
+
+const countedStatus = (f: ReportFilters) => (s: ReportShoot) => (f.status ? s.status === f.status : s.status !== "CANCELLED");
+
 export function resourceDrilldown(all: ReportShoot[], resourceId: string, f: ReportFilters) {
-  const list = applyFilters(all, { ...f, resourceId }).filter((s) => (f.status ? s.status === f.status : s.status !== "CANCELLED"));
+  const list = applyFilters(all, { ...f, resourceId }).filter(countedStatus(f)).sort(byDateTime);
   const out = split();
   for (const s of list) bump(out, s.shootType);
-  return {
-    ...out,
-    shoots: list
-      .map((s) => ({ id: s.id, date: s.date, brandName: s.brandName, shootType: s.shootType, status: s.status }))
-      .sort((a, b) => a.date.localeCompare(b.date)),
-  };
+  return { ...out, shoots: list.map(row) };
+}
+
+/** A team's shoots in the period, with which of its members were on each one. */
+export function teamDrilldown(all: ReportShoot[], teamId: string, f: ReportFilters) {
+  const list = applyFilters(all, { ...f, teamId }).filter(countedStatus(f)).sort(byDateTime);
+  const out = split();
+  let assignments = 0;
+  const shoots = list.map((s) => {
+    bump(out, s.shootType);
+    const crew = s.resources.filter((r) => r.teamId === teamId && (!f.resourceId || r.id === f.resourceId));
+    assignments += crew.length;
+    return { ...row(s), crew: crew.map((r) => ({ id: r.id, name: r.name, role: r.role })) };
+  });
+  return { ...out, assignments, shoots };
 }

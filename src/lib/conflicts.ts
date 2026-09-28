@@ -47,10 +47,19 @@ export function findResourceConflicts(
     for (const r of s.resources) {
       if (!wanted.has(r.id)) continue;
       const overlap = timesOverlap(target.startTime, target.endTime, s.startTime, s.endTime);
-      const sameVisit = !!target.brandId && target.brandId === s.brandId && sameLocation(target.location, s.location);
+      const sameBrand = !!target.brandId && target.brandId === s.brandId;
+      const sameVisit = sameBrand && sameLocation(target.location, s.location);
       const severity: ResourceConflict["severity"] =
         !target.startTime || !s.startTime ? "untimed" : !overlap ? "sameDay" : sameVisit ? "sameVisit" : "clash";
-      out.push({ resourceId: r.id, resourceName: r.name, severity, shoot: { id: s.id, brandName: s.brandName, startTime: s.startTime, endTime: s.endTime } });
+      const reason: ResourceConflict["reason"] =
+        severity !== "clash" ? undefined : !sameBrand ? "differentBrand" : !target.location?.trim() || !s.location?.trim() ? "noLocation" : "differentLocation";
+      out.push({
+        resourceId: r.id,
+        resourceName: r.name,
+        severity,
+        ...(reason ? { reason } : {}),
+        shoot: { id: s.id, brandName: s.brandName, location: s.location, startTime: s.startTime, endTime: s.endTime },
+      });
     }
   }
   const rank = { clash: 0, untimed: 1, sameDay: 2, sameVisit: 3 } as const;

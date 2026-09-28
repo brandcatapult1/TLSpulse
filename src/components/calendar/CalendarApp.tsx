@@ -220,6 +220,7 @@ export function CalendarApp({ isAdmin }: { isAdmin: boolean }) {
 
       <ShootForm
         target={form}
+        canAddBrand={isAdmin}
         recentLocations={recentLocations}
         onClose={() => setForm(null)}
         onSaved={(s, mode) => {

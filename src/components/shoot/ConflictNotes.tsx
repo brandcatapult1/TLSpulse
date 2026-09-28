@@ -1,5 +1,6 @@
 import { AlertTriangle, Info } from "lucide-react";
 import { fmtDayMonth, fmtTimeRange } from "@/lib/dates";
+import { CLASH_REASON, shootPlace } from "@/lib/clash-message";
 import type { ConflictReport } from "@/lib/types";
 
 /** Date notes and soft resource conflicts warn; a same-person time clash blocks saving. */
@@ -32,12 +33,15 @@ export function ResourceConflictNotes({ report, selected, date }: { report: Conf
               <li key={`${c.resourceId}-${c.shoot.id}`} className="flex gap-1.5">
                 <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                 <span>
-                  <b>{c.resourceName}</b> — {c.shoot.brandName} · {fmtTimeRange(c.shoot.startTime, c.shoot.endTime)}
+                  <b>{c.resourceName}</b> — {shootPlace(c)} · {fmtTimeRange(c.shoot.startTime, c.shoot.endTime)}
+                  {c.reason && <span className="text-danger/80"> ({CLASH_REASON[c.reason]})</span>}
                 </span>
               </li>
             ))}
           </ul>
-          <p className="mt-1 text-ink/70">Pick a time outside these slots or deploy someone else. Crew can overlap only for the same brand at the same location.</p>
+          <p className="mt-1 text-ink/70">
+            Crew can overlap only when both shoots are the <b>same brand</b> at the <b>same location</b>. Otherwise pick another time or deploy someone else.
+          </p>
         </div>
       )}
       {shared.length > 0 && (
@@ -46,7 +50,8 @@ export function ResourceConflictNotes({ report, selected, date }: { report: Conf
             <li key={`${c.resourceId}-${c.shoot.id}`} className="flex gap-1.5">
               <Info size={14} className="mt-0.5 shrink-0" />
               <span>
-                <b className="text-ink">{c.resourceName}</b> is also on the {c.shoot.brandName} shoot at the same location ({fmtTimeRange(c.shoot.startTime, c.shoot.endTime)}) — allowed, same brand &amp; venue.
+                <b className="text-ink">{c.resourceName}</b> is also on {shootPlace(c)} ({fmtTimeRange(c.shoot.startTime, c.shoot.endTime)}) — allowed:{" "}
+                <b className="text-ink">same brand · same location</b>.
               </span>
             </li>
           ))}

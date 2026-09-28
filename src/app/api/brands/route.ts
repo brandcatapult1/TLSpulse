@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const g = await requireUser("brand.create");
-  if (g.error) return g.error;
+  if (g.error) return g.error.status === 403 ? NextResponse.json({ error: "Only an admin can add brands" }, { status: 403 }) : g.error;
   const parsed = BrandInput.safeParse(await readJson(req));
   if (!parsed.success) return bad(firstError(parsed.error));
   const existing = await db.brand.findFirst({ where: { name: { equals: parsed.data.name, mode: "insensitive" } } });

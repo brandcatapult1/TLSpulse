@@ -4,6 +4,7 @@ import type { Role } from "./session";
 
 const ADMIN_ONLY = new Set([
   "shoot.delete",
+  "brand.create", // Users pick existing brands only (decided 28 Sep 2026)
   "brand.deactivate",
   "brand.delete",
   "resource.write",
@@ -21,7 +22,6 @@ const EVERYONE = new Set([
   "shoot.cancel",
   "shoot.assign",
   "brand.view",
-  "brand.create",
   "brand.edit",
   "resource.view",
   "team.view",

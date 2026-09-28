@@ -48,8 +48,10 @@ export function ShootForm({
   onClose,
   onSaved,
   recentLocations,
+  canAddBrand,
 }: {
   target: FormTarget | null;
+  canAddBrand: boolean;
   onClose: () => void;
   onSaved: (shoot: ShootDTO, mode: "create" | "edit") => void;
   recentLocations: string[];
@@ -198,6 +200,7 @@ export function ShootForm({
             fallbackName={isEdit ? target.shoot.brandName : undefined}
             onChange={(id) => set("brandId", id)}
             onCreated={masters.addBrand}
+            canCreate={canAddBrand}
             invalid={missing.has("brandId")}
           />
         </div>

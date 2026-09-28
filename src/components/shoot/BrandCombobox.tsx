@@ -15,7 +15,9 @@ export function BrandCombobox({
   onChange,
   onCreated,
   invalid,
+  canCreate: allowCreate,
 }: {
+  canCreate: boolean;
   brands: BrandDTO[];
   value: string;
   fallbackName?: string;
@@ -44,7 +46,7 @@ export function BrandCombobox({
     return brands.filter((b) => b.name.toLowerCase().includes(needle) || b.companyGroup?.toLowerCase().includes(needle));
   }, [brands, q]);
   const exact = brands.some((b) => b.name.toLowerCase() === q.trim().toLowerCase());
-  const canCreate = q.trim().length > 0 && !exact;
+  const canCreate = allowCreate && q.trim().length > 0 && !exact;
   const count = matches.length + (canCreate ? 1 : 0);
 
   function pick(id: string) {
@@ -134,7 +136,11 @@ export function BrandCombobox({
               <Plus size={15} /> {creating ? "Creating…" : `Create new brand “${q.trim()}”`}
             </button>
           )}
-          {!matches.length && !canCreate && <p className="px-3 py-2 text-sm text-muted">No brands yet. Type a name to create one.</p>}
+          {!matches.length && !canCreate && (
+            <p className="px-3 py-2 text-sm text-muted">
+              {allowCreate ? "No brands yet. Type a name to create one." : q.trim() ? `No brand called “${q.trim()}”. Ask an admin to add it.` : "No brands yet. Ask an admin to add them."}
+            </p>
+          )}
           {error && <p className="px-3 py-2 text-sm text-danger">{error}</p>}
         </div>
       )}

@@ -17,8 +17,8 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link, { useLinkStatus } from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Logo } from "./Logo";
 import { SearchPalette } from "./SearchPalette";
@@ -41,6 +41,19 @@ const COLLAPSE_KEY = "tlsp.sidebar.collapsed";
 
 export function AppShell({ name, role, children }: { name: string; role: "ADMIN" | "USER"; children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  // The page the user just clicked, highlighted immediately while it loads.
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  useEffect(() => setPendingHref(null), [pathname]);
+
+  // Warm the other sections once idle so the first click on each is fast.
+  useEffect(() => {
+    const hrefs = [...NAV, ...(role === "ADMIN" ? ADMIN_NAV : [])].map((n) => n.href);
+    const warm = () => hrefs.forEach((h) => router.prefetch(h));
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    if (w.requestIdleCallback) w.requestIdleCallback(warm);
+    else setTimeout(warm, 1500);
+  }, [role, router]);
   const [collapsed, setCollapsed] = useState(false);
   // Below laptop width the sidebar is icons-only so the calendar keeps usable columns.
   const [wide, setWide] = useState(true);
@@ -87,7 +100,8 @@ export function AppShell({ name, role, children }: { name: string; role: "ADMIN"
     window.location.assign("/login");
   }
 
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const onPath = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const isActive = (href: string) => (pendingHref ? pendingHref === href : onPath(href));
 
   const navList = (compact: boolean) => (
     <>
@@ -104,11 +118,11 @@ export function AppShell({ name, role, children }: { name: string; role: "ADMIN"
           </>
         )}
       </button>
-      <NavGroup items={NAV} compact={compact} isActive={isActive} />
+      <NavGroup items={NAV} compact={compact} isActive={isActive} onNavigate={setPendingHref} />
       {role === "ADMIN" && (
         <>
           {!compact ? <div className="mt-5 mb-1 px-3 text-[11px] font-semibold tracking-wide text-muted uppercase">Admin</div> : <div className="my-3 h-px bg-line" />}
-          <NavGroup items={ADMIN_NAV} compact={compact} isActive={isActive} />
+          <NavGroup items={ADMIN_NAV} compact={compact} isActive={isActive} onNavigate={setPendingHref} />
         </>
       )}
     </>
@@ -212,17 +226,43 @@ function navCls(active: boolean, compact: boolean) {
   );
 }
 
-function NavGroup({ items, compact, isActive }: { items: NavItem[]; compact: boolean; isActive: (h: string) => boolean }) {
+function NavGroup({
+  items,
+  compact,
+  isActive,
+  onNavigate,
+}: {
+  items: NavItem[];
+  compact: boolean;
+  isActive: (h: string) => boolean;
+  onNavigate: (href: string) => void;
+}) {
   return (
     <ul className="space-y-0.5">
       {items.map(({ href, label, Icon }) => (
         <li key={href}>
-          <Link href={href} title={compact ? label : undefined} aria-current={isActive(href) ? "page" : undefined} className={navCls(isActive(href), compact)}>
+          <Link
+            href={href}
+            prefetch
+            onClick={(e) => {
+              if (!(e.metaKey || e.ctrlKey || e.shiftKey)) onNavigate(href);
+            }}
+            title={compact ? label : undefined}
+            aria-current={isActive(href) ? "page" : undefined}
+            className={navCls(isActive(href), compact)}
+          >
             <Icon size={17} className={clsx(isActive(href) && "text-social")} />
-            {!compact && label}
+            {!compact && <span className="flex-1">{label}</span>}
+            <PendingDot />
           </Link>
         </li>
       ))}
     </ul>
   );
+}
+
+/** Small spinner inside a nav link while its page is loading. */
+function PendingDot() {
+  const { pending } = useLinkStatus();
+  return pending ? <span aria-hidden className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-muted/30 border-t-social" /> : null;
 }

@@ -125,7 +125,7 @@ export function ResourcePicker({
                         {r.teamType === "EXTERNAL" && <span className="ml-1.5 rounded bg-soft px-1 text-[10px] text-muted">External</span>}
                       </span>
                       {sev === "sameVisit" ? (
-                        <span className="text-xs text-muted">Same brand &amp; venue</span>
+                        <span className="text-xs text-muted">Same brand · same location</span>
                       ) : (
                         sev && (
                           <span className={clsx("inline-flex items-center gap-1 text-xs", sev === "clash" ? "text-danger" : "text-warn")}>

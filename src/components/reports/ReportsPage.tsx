@@ -1,12 +1,12 @@
 "use client";
 
 import clsx from "clsx";
-import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Download, MapPin, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { api, downloadCsv } from "@/lib/api";
-import { fmtShort, ymd } from "@/lib/dates";
+import { fmtShort, fmtTimeRange, ymd } from "@/lib/dates";
 import { periodFor, periodFromParams, periodLabel, periodQuery, shiftPeriod, type Period, type PeriodView } from "@/lib/report-period";
 import type { BrandDTO, ResourceDTO, ShootStatus, ShootType, TeamDTO } from "@/lib/types";
 import { STATUS_META, TYPE_META } from "@/lib/ui-meta";
@@ -14,16 +14,32 @@ import { Drawer } from "../Overlay";
 import { Button, EmptyState, Pill, Select, Skeleton } from "../ui";
 
 type Split = { total: number; social: number; realtime: number };
+type ShootRow = {
+  id: string;
+  date: string;
+  startTime: string | null;
+  endTime: string | null;
+  location: string | null;
+  brandName: string;
+  shootType: ShootType;
+  status: ShootStatus;
+};
 type Report = {
   period: Period & { label: string };
   overview: Split & { cancelled: number; resourcesUsed: number; unassigned: number };
   byResource: (Split & { id: string; name: string; role: string; teamName: string })[];
   byTeam: { id: string; name: string; type: "INTERNAL" | "EXTERNAL"; assignments: number; shoots: number }[];
   byBrand: (Split & { id: string; name: string })[];
+  unassigned: ShootRow[];
 };
 type Drill = Split & {
   resource: { id: string; name: string; role: string; teamName: string };
-  shoots: { id: string; date: string; brandName: string; shootType: ShootType; status: ShootStatus }[];
+  shoots: ShootRow[];
+};
+type TeamDrill = Split & {
+  team: { id: string; name: string; type: "INTERNAL" | "EXTERNAL" };
+  assignments: number;
+  shoots: (ShootRow & { crew: { id: string; name: string; role: string }[] })[];
 };
 
 const FILTER_KEYS = ["type", "brandId", "resourceId", "teamId", "status"] as const;
@@ -42,6 +58,8 @@ export function ReportsPage() {
   const [masters, setMasters] = useState<{ brands: BrandDTO[]; resources: ResourceDTO[]; teams: TeamDTO[] } | null>(null);
   const [drill, setDrill] = useState<Drill | null>(null);
   const drillId = params.get("resource");
+  const teamDrillId = params.get("team");
+  const [teamDrill, setTeamDrill] = useState<TeamDrill | null>(null);
 
   const filterQs = useMemo(() => {
     const sp = periodQuery(period);
@@ -68,6 +86,18 @@ export function ReportsPage() {
       live = false;
     };
   }, [filterQs]);
+
+  useEffect(() => {
+    if (!teamDrillId) return setTeamDrill(null);
+    let live = true;
+    setTeamDrill(null);
+    api<TeamDrill>(`/api/reports/team/${teamDrillId}?${filterQs}`)
+      .then((d) => live && setTeamDrill(d))
+      .catch(() => live && setTeamDrill(null));
+    return () => {
+      live = false;
+    };
+  }, [teamDrillId, filterQs]);
 
   useEffect(() => {
     if (!drillId) return setDrill(null);
@@ -272,7 +302,7 @@ export function ReportsPage() {
         <Card
           className="lg:col-span-2"
           title="Team allocation"
-          subtitle={`${label} — assignments per team`}
+          subtitle={`${label} — click a team to see its shoots and times`}
           onExport={report && (() => downloadCsv(`tls-pulse-teams-${fileTag}.csv`, [["Team", "Type", "Assignments", "Shoots"], ...report.byTeam.map((t) => [t.name, t.type === "EXTERNAL" ? "External" : "Internal", t.assignments, t.shoots])]))}
         >
           {!report ? (
@@ -283,6 +313,7 @@ export function ReportsPage() {
             <ul className="space-y-3">
               {report.byTeam.map((t) => (
                 <li key={t.id}>
+                  <button onClick={() => setParam("team", t.id)} className={clsx("block w-full rounded-lg px-2 py-1.5 text-left hover:bg-soft", teamDrillId === t.id && "bg-soft")}>
                   <div className="mb-1 flex items-baseline justify-between text-sm">
                     <span className="font-medium">
                       {t.name} {t.type === "EXTERNAL" && <span className="ml-1 rounded-full bg-warn-bg px-1.5 py-px text-[10px] font-medium text-warn">External</span>}
@@ -294,12 +325,73 @@ export function ReportsPage() {
                   <div className="h-2 overflow-hidden rounded-full bg-soft">
                     <div className="h-full rounded-full bg-ink/80" style={{ width: `${(t.assignments / maxTeam) * 100}%` }} />
                   </div>
+                  </button>
                 </li>
               ))}
             </ul>
           )}
         </Card>
       </div>
+
+      {/* Unassigned shoots: allocation gaps to fix */}
+      <Card
+        className="mt-6"
+        title={
+          <span className="flex items-center gap-2">
+            Unassigned shoots
+            {report && report.unassigned.length > 0 && <span className="rounded-full bg-warn-bg px-2 py-0.5 text-xs font-semibold text-warn">{report.unassigned.length}</span>}
+          </span>
+        }
+        subtitle="Shoots with nobody deployed yet. Click one to open it on the calendar."
+        onExport={
+          report?.unassigned.length
+            ? () =>
+            downloadCsv(`tls-pulse-unassigned-${fileTag}.csv`, [
+              ["Date", "Time", "Brand", "Type", "Location", "Status"],
+              ...report.unassigned.map((s) => [s.date, fmtTimeRange(s.startTime, s.endTime), s.brandName, TYPE_META[s.shootType].short, s.location ?? "", STATUS_META[s.status].label]),
+            ])
+            : null
+        }
+      >
+        {!report ? (
+          <Skeleton className="h-24" />
+        ) : report.unassigned.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted">Every shoot {periodText} has crew deployed.</p>
+        ) : (
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {report.unassigned.map((s) => (
+              <li key={s.id}>
+                <Link
+                  href={`/?m=${s.date.slice(0, 7)}&shoot=${s.id}`}
+                  className="flex gap-3 rounded-xl border border-warn/30 bg-warn-bg/40 p-3 transition-colors hover:bg-warn-bg"
+                >
+                  <span className={clsx("w-1 shrink-0 rounded-full", TYPE_META[s.shootType].dot)} />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="truncate font-semibold">{s.brandName}</span>
+                      <span className="tabular shrink-0 text-xs text-muted">{fmtShort(s.date)}</span>
+                    </span>
+                    <span className="mt-0.5 block text-xs">
+                      <span className="tabular">{s.startTime ? fmtTimeRange(s.startTime, s.endTime) : "No time set"}</span>
+                      <span className="text-muted"> · </span>
+                      <span className={TYPE_META[s.shootType].text}>{TYPE_META[s.shootType].short}</span>
+                      {s.status === "RESCHEDULED" && <span className="text-info"> · Rescheduled</span>}
+                    </span>
+                    {s.location && (
+                      <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
+                        <MapPin size={11} /> {s.location}
+                      </span>
+                    )}
+                    <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-warn">
+                      <AlertTriangle size={11} /> Resources not assigned
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       {/* Shoots by brand (PRD §29) */}
       <Card
@@ -364,6 +456,7 @@ export function ReportsPage() {
                 <thead className="text-left text-xs text-muted">
                   <tr>
                     <th className="py-1.5 font-medium">Date</th>
+                    <th className="py-1.5 font-medium">Time</th>
                     <th className="py-1.5 font-medium">Brand</th>
                     <th className="py-1.5 font-medium">Type</th>
                   </tr>
@@ -376,7 +469,11 @@ export function ReportsPage() {
                           {fmtShort(s.date)}
                         </Link>
                       </td>
-                      <td className="py-2 font-medium">{s.brandName}</td>
+                      <td className="tabular py-2 text-xs whitespace-nowrap">{s.startTime ? fmtTimeRange(s.startTime, s.endTime) : <span className="text-muted">No time</span>}</td>
+                      <td className="py-2 font-medium">
+                        {s.brandName}
+                        {s.location && <span className="block text-[11px] font-normal text-muted">{s.location}</span>}
+                      </td>
                       <td className="py-2">
                         <Pill className={TYPE_META[s.shootType].pill}>{TYPE_META[s.shootType].short}</Pill>
                         {s.status !== "PLANNED" && <span className="ml-1.5 text-xs text-muted">{STATUS_META[s.status].label}</span>}
@@ -387,6 +484,65 @@ export function ReportsPage() {
               </table>
             ) : (
               <p className="mt-6 text-center text-sm text-muted">No shoots for this person {periodText}.</p>
+            )}
+          </>
+        )}
+      </Drawer>
+
+      {/* Team drill-down */}
+      <Drawer
+        open={!!teamDrillId}
+        onClose={() => setParam("team", null)}
+        wide
+        title={
+          teamDrill && (
+            <span>
+              {teamDrill.team.name} — {label}
+              <span className="block text-sm font-normal text-muted">
+                {teamDrill.team.type === "EXTERNAL" ? "External team" : "Internal team"} · {teamDrill.assignments} assignments on {teamDrill.total} shoots
+              </span>
+            </span>
+          )
+        }
+      >
+        {!teamDrill ? (
+          <Skeleton className="h-48" />
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <Tile label="Shoots" value={teamDrill.total} />
+              <Tile label="Social" value={teamDrill.social} dot="bg-social" />
+              <Tile label="Real Time" value={teamDrill.realtime} dot="bg-realtime" />
+            </div>
+            {teamDrill.shoots.length ? (
+              <ul className="mt-5 divide-y divide-line rounded-xl border border-line">
+                {teamDrill.shoots.map((s) => (
+                  <li key={s.id}>
+                    <Link href={`/?m=${s.date.slice(0, 7)}&shoot=${s.id}`} className="flex gap-3 px-3 py-2.5 hover:bg-soft">
+                      <span className="w-16 shrink-0">
+                        <span className="tabular block text-sm font-medium">{fmtShort(s.date)}</span>
+                        <span className="tabular block text-[11px] text-muted">{s.startTime ? fmtTimeRange(s.startTime, null) : "No time"}</span>
+                        {s.endTime && <span className="tabular block text-[11px] text-muted">to {fmtTimeRange(s.endTime, null)}</span>}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span className="truncate font-medium">{s.brandName}</span>
+                          <Pill className={TYPE_META[s.shootType].pill}>{TYPE_META[s.shootType].short}</Pill>
+                          {s.status !== "PLANNED" && <span className="text-xs text-muted">{STATUS_META[s.status].label}</span>}
+                        </span>
+                        {s.location && (
+                          <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
+                            <MapPin size={11} /> {s.location}
+                          </span>
+                        )}
+                        <span className="mt-1 block text-xs">{s.crew.map((c) => `${c.name} (${c.role})`).join(", ")}</span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-6 text-center text-sm text-muted">No shoots for this team {periodText}.</p>
             )}
           </>
         )}
@@ -408,7 +564,7 @@ function Tile({ label, value, dot, tone, hint }: { label: string; value: number;
   );
 }
 
-function Card({ title, subtitle, className, children, onExport }: { title: string; subtitle?: string; className?: string; children: React.ReactNode; onExport?: (() => void) | null }) {
+function Card({ title, subtitle, className, children, onExport }: { title: React.ReactNode; subtitle?: string; className?: string; children: React.ReactNode; onExport?: (() => void) | null }) {
   return (
     <section className={clsx("rounded-2xl border border-line p-4 sm:p-5", className)}>
       <div className="mb-3 flex items-start justify-between gap-3">
