@@ -8,6 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const g = await requireUser("report.view");
   if (g.error) return g.error;
   const { id } = await params;
+  if (g.user.role === "CREW" && id !== g.user.resourceId) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
   const resource = await db.resource.findUnique({ where: { id }, include: { team: { select: { name: true } } } });
   if (!resource) return NextResponse.json({ error: "Resource not found" }, { status: 404 });
   const { period, filters } = readFilters(req);

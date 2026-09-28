@@ -20,6 +20,7 @@ type Detail = {
 export function ShootDrawer({
   shoot,
   isAdmin,
+  readOnly = false,
   onClose,
   onEdit,
   onChanged,
@@ -27,6 +28,7 @@ export function ShootDrawer({
 }: {
   shoot: ShootDTO | null;
   isAdmin: boolean;
+  readOnly?: boolean;
   onClose: () => void;
   onEdit: (s: ShootDTO) => void;
   onChanged: (s: ShootDTO) => void;
@@ -90,27 +92,29 @@ export function ShootDrawer({
         onClose={onClose}
         title={<span className="text-lg">{current.brandName}</span>}
         footer={
-          <div className="flex w-full flex-wrap items-center gap-2">
-            {isAdmin && (
-              <Button variant="ghost" size="sm" className="text-danger" onClick={() => setConfirm("delete")}>
-                <Trash2 size={15} /> Delete
-              </Button>
-            )}
-            <div className="ml-auto flex gap-2">
-              {cancelled ? (
-                <Button variant="outline" onClick={() => setStatus("PLANNED")} disabled={busy}>
-                  <RotateCcw size={15} /> Restore
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={() => setConfirm("cancel")}>
-                  <XCircle size={15} /> Cancel shoot
+          readOnly ? undefined : (
+            <div className="flex w-full flex-wrap items-center gap-2">
+              {isAdmin && (
+                <Button variant="ghost" size="sm" className="text-danger" onClick={() => setConfirm("delete")}>
+                  <Trash2 size={15} /> Delete
                 </Button>
               )}
-              <Button onClick={() => onEdit(current)}>
-                <Pencil size={15} /> Edit
-              </Button>
+              <div className="ml-auto flex gap-2">
+                {cancelled ? (
+                  <Button variant="outline" onClick={() => setStatus("PLANNED")} disabled={busy}>
+                    <RotateCcw size={15} /> Restore
+                  </Button>
+                ) : (
+                  <Button variant="outline" onClick={() => setConfirm("cancel")}>
+                    <XCircle size={15} /> Cancel shoot
+                  </Button>
+                )}
+                <Button onClick={() => onEdit(current)}>
+                  <Pencil size={15} /> Edit
+                </Button>
+              </div>
             </div>
-          </div>
+          )
         }
       >
         <ShootDetails shoot={current} />

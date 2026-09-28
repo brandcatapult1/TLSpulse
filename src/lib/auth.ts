@@ -12,8 +12,10 @@ export type CurrentUser = {
   id: string;
   name: string;
   email: string;
-  role: "ADMIN" | "USER";
+  role: "ADMIN" | "USER" | "CREW";
   mustChangePw: boolean;
+  /** Crew only: the resource whose shoots they may see. */
+  resourceId: string | null;
 };
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
@@ -22,10 +24,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!claims) return null;
   const user = await db.user.findUnique({
     where: { id: claims.sub },
-    select: { id: true, name: true, email: true, role: true, mustChangePw: true, status: true },
+    select: { id: true, name: true, email: true, role: true, mustChangePw: true, status: true, resourceId: true },
   });
   if (!user || user.status !== "ACTIVE") return null;
-  return { id: user.id, name: user.name, email: user.email, role: user.role, mustChangePw: user.mustChangePw };
+  return { id: user.id, name: user.name, email: user.email, role: user.role, mustChangePw: user.mustChangePw, resourceId: user.resourceId };
 }
 
 type Guard = { user: CurrentUser; error?: never } | { user?: never; error: NextResponse };
@@ -52,6 +54,22 @@ export async function requireUserPage(): Promise<CurrentUser> {
   if (!user) redirect("/login");
   if (user.mustChangePw) redirect("/change-password");
   return user;
+}
+
+/** Pages crew can't open (brands, resources) send them back to their calendar. */
+export async function requireStaffPage(): Promise<CurrentUser> {
+  const user = await requireUserPage();
+  if (user.role === "CREW") redirect("/");
+  return user;
+}
+
+/**
+ * Prisma filter limiting shoots to what this user may see: everything for staff,
+ * only shoots they're assigned to for crew (nothing if the crew login lost its resource).
+ */
+export function shootScope(user: CurrentUser) {
+  if (user.role !== "CREW") return {};
+  return { assignments: { some: { resourceId: user.resourceId ?? "__none__" } } };
 }
 
 export async function requireAdminPage(): Promise<CurrentUser> {

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { writeAudit } from "@/lib/audit";
-import { requireAdmin, requireUser } from "@/lib/auth";
+import { requireAdmin, requireUser, shootScope } from "@/lib/auth";
 import { clashMessage } from "@/lib/clash-message";
 import { clashKey, isClash } from "@/lib/conflicts";
 import { db } from "@/lib/db";
@@ -17,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   const g = await requireUser("shoot.view");
   if (g.error) return g.error;
   const { id } = await params;
-  const shoot = await getShoot(id);
+  const shoot = await getShoot(id, shootScope(g.user));
   if (!shoot) return NextResponse.json({ error: "Shoot not found" }, { status: 404 });
 
   const [history, people] = await Promise.all([

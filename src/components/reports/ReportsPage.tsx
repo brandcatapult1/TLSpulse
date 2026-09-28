@@ -1,16 +1,17 @@
 "use client";
 
 import clsx from "clsx";
-import { AlertTriangle, ChevronLeft, ChevronRight, Download, MapPin, X } from "lucide-react";
+import { AlertTriangle, Download, MapPin, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { api, downloadCsv } from "@/lib/api";
-import { fmtShort, fmtTimeRange, ymd } from "@/lib/dates";
-import { periodFor, periodFromParams, periodLabel, periodQuery, shiftPeriod, type Period, type PeriodView } from "@/lib/report-period";
+import { fmtShort, fmtTimeRange } from "@/lib/dates";
+import { periodFromParams, periodLabel, periodQuery, type Period } from "@/lib/report-period";
 import type { BrandDTO, ResourceDTO, ShootStatus, ShootType, TeamDTO } from "@/lib/types";
 import { STATUS_META, TYPE_META } from "@/lib/ui-meta";
 import { Drawer } from "../Overlay";
+import { PeriodBar } from "./PeriodBar";
 import { Button, EmptyState, Pill, Select, Skeleton } from "../ui";
 
 type Split = { total: number; social: number; realtime: number };
@@ -44,7 +45,6 @@ type TeamDrill = Split & {
 
 const FILTER_KEYS = ["type", "brandId", "resourceId", "teamId", "status"] as const;
 const PERIOD_KEYS = ["view", "date", "from", "to", "month"] as const;
-const VIEW_LABEL: Record<PeriodView, string> = { day: "Day", week: "Week", month: "Month", range: "Range" };
 
 export function ReportsPage() {
   const router = useRouter();
@@ -124,14 +124,6 @@ export function ReportsPage() {
     periodQuery(p).forEach((v, k) => sp.set(k, v));
     router.replace(`${pathname}?${sp.toString()}`, { scroll: false });
   }
-  function setView(v: PeriodView) {
-    if (v === period.view) return;
-    // Keep the user's place: switching to Day/Week/Month anchors on the current start date
-    // (or today if it falls inside the period); Range starts from the current period.
-    const today = ymd(new Date());
-    const anchor = today >= period.from && today <= period.to ? today : period.from;
-    setPeriod(v === "range" ? { view: "range", from: period.from, to: period.to } : periodFor(v, anchor));
-  }
 
   const o = report?.overview;
   const maxRes = Math.max(1, ...(report?.byResource.map((r) => r.total) ?? [1]));
@@ -143,55 +135,7 @@ export function ReportsPage() {
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <h1 className="mr-auto text-xl font-semibold tracking-tight">Reports</h1>
         {/* Period: daily, weekly, monthly or a custom date range */}
-        <div role="tablist" aria-label="Report period" className="inline-flex rounded-xl bg-soft p-1 text-sm">
-          {(Object.keys(VIEW_LABEL) as PeriodView[]).map((v) => (
-            <button
-              key={v}
-              role="tab"
-              aria-selected={period.view === v}
-              onClick={() => setView(v)}
-              className={clsx("rounded-lg px-3 py-1.5", period.view === v ? "bg-surface font-medium shadow-sm" : "text-muted hover:text-ink")}
-            >
-              {VIEW_LABEL[v]}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1 rounded-xl border border-line p-1">
-          <button aria-label="Previous period" onClick={() => setPeriod(shiftPeriod(period, -1))} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-soft">
-            <ChevronLeft size={16} />
-          </button>
-          {period.view === "range" ? (
-            <span className="flex items-center gap-1 px-1">
-              <input
-                type="date"
-                aria-label="From"
-                value={period.from}
-                max={period.to}
-                onChange={(e) => e.target.value && setPeriod({ view: "range", from: e.target.value, to: period.to < e.target.value ? e.target.value : period.to })}
-                className="h-8 rounded-md bg-transparent px-1 text-sm outline-none focus:bg-soft"
-              />
-              <span className="text-muted">–</span>
-              <input
-                type="date"
-                aria-label="To"
-                value={period.to}
-                min={period.from}
-                onChange={(e) => e.target.value && setPeriod({ view: "range", from: period.from > e.target.value ? e.target.value : period.from, to: e.target.value })}
-                className="h-8 rounded-md bg-transparent px-1 text-sm outline-none focus:bg-soft"
-              />
-            </span>
-          ) : (
-            <span className="min-w-[150px] px-1 text-center text-sm font-medium">{label}</span>
-          )}
-          <button aria-label="Next period" onClick={() => setPeriod(shiftPeriod(period, 1))} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-soft">
-            <ChevronRight size={16} />
-          </button>
-        </div>
-        {period.view !== "range" && (
-          <Button variant="ghost" size="sm" onClick={() => setPeriod(periodFor(period.view as Exclude<PeriodView, "range">, ymd(new Date())))}>
-            {period.view === "day" ? "Today" : period.view === "week" ? "This week" : "This month"}
-          </Button>
-        )}
+        <PeriodBar period={period} onChange={setPeriod} />
       </div>
 
       {/* Filters (PRD §30) */}

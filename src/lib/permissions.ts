@@ -1,8 +1,24 @@
-// Single source of truth for Admin vs User rights (Handbook §7).
+// Single source of truth for who can do what (Handbook §7).
 // UI may hide controls using this, but every API route must also check it.
 import type { Role } from "./session";
 
-const ADMIN_ONLY = new Set([
+// Crew (a resource's own login) is view-only, and every query is scoped to their shoots.
+const CREW = ["calendar.view", "shoot.view", "report.view"] as const;
+
+const USER = [
+  ...CREW,
+  "shoot.create",
+  "shoot.edit",
+  "shoot.cancel",
+  "shoot.assign",
+  "brand.view",
+  "brand.edit",
+  "resource.view",
+  "team.view",
+] as const;
+
+const ADMIN = [
+  ...USER,
   "shoot.delete",
   "brand.create", // Users pick existing brands only (decided 28 Sep 2026)
   "brand.deactivate",
@@ -12,28 +28,15 @@ const ADMIN_ONLY = new Set([
   "user.manage",
   "settings.manage",
   "audit.view",
-] as const);
+] as const;
 
-const EVERYONE = new Set([
-  "calendar.view",
-  "shoot.view",
-  "shoot.create",
-  "shoot.edit",
-  "shoot.cancel",
-  "shoot.assign",
-  "brand.view",
-  "brand.edit",
-  "resource.view",
-  "team.view",
-  "report.view",
-] as const);
+export type Action = (typeof ADMIN)[number];
 
-export type Action =
-  | (typeof ADMIN_ONLY extends Set<infer T> ? T : never)
-  | (typeof EVERYONE extends Set<infer T> ? T : never);
+const ALLOWED: Record<Role, ReadonlySet<string>> = { CREW: new Set(CREW), USER: new Set(USER), ADMIN: new Set(ADMIN) };
 
 export function can(role: Role, action: Action): boolean {
-  if (EVERYONE.has(action as never)) return true;
-  if (ADMIN_ONLY.has(action as never)) return role === "ADMIN";
-  return false;
+  return ALLOWED[role].has(action);
 }
+
+/** Sections shown in the sidebar for each role. */
+export const canSeeMasters = (role: Role) => role !== "CREW";

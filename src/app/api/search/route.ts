@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { format, isValid, parse } from "date-fns";
 import { NextResponse, type NextRequest } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireUser, shootScope } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { fromDbDate, toDbDate } from "@/lib/dates";
 
@@ -39,10 +39,20 @@ export async function GET(req: NextRequest) {
       ORDER BY score DESC LIMIT 10`),
   ]);
 
+  // Crew search only their own shoots; no brand or people directory.
+  const crew = g.user.role === "CREW";
+  if (crew) {
+    brandHits.length = 0;
+    resourceHits.length = 0;
+  }
+  const brandIdsForShoots = crew
+    ? (await db.brand.findMany({ where: { name: { contains: q, mode: "insensitive" } }, select: { id: true } })).map((b) => b.id)
+    : [];
   const date = parseDateQuery(q);
   const brandIds = brandHits.map((b) => b.id);
   const shootWhere: Prisma.ShootWhereInput[] = [];
   if (brandIds.length) shootWhere.push({ brandId: { in: brandIds } });
+  if (brandIdsForShoots.length) shootWhere.push({ brandId: { in: brandIdsForShoots } });
   if (locationHits.length) shootWhere.push({ id: { in: locationHits.map((l) => l.id) } });
   if (date) shootWhere.push({ date: toDbDate(date) });
 
@@ -52,7 +62,7 @@ export async function GET(req: NextRequest) {
     db.resource.findMany({ where: { id: { in: resourceHits.map((r) => r.id) } }, select: { id: true, name: true, role: true, team: { select: { name: true } } } }),
     shootWhere.length
       ? db.shoot.findMany({
-          where: { deletedAt: null, OR: shootWhere },
+          where: { deletedAt: null, OR: shootWhere, ...shootScope(g.user) },
           select: { id: true, date: true, shootType: true, status: true, startTime: true, brand: { select: { name: true } } },
           take: 60,
         })

@@ -18,7 +18,7 @@ const cache = new Map<string, ShootDTO[]>();
 const SHOW_CANCELLED_KEY = "tlsp.showCancelled";
 
 /** The internal calendar: data, URL state, and all create/edit/move flows. */
-export function CalendarApp({ isAdmin }: { isAdmin: boolean }) {
+export function CalendarApp({ isAdmin, readOnly = false }: { isAdmin: boolean; readOnly?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -42,21 +42,24 @@ export function CalendarApp({ isAdmin }: { isAdmin: boolean }) {
     } catch {}
   }, []);
 
-  const load = useCallback(async (m: Date) => {
-    const k = monthKey(m);
-    const id = ++reqId.current;
-    if (!cache.has(k)) setLoading(true);
-    try {
-      const { from, to } = gridRange(m);
-      const { shoots } = await api<{ shoots: ShootDTO[] }>(`/api/shoots?from=${from}&to=${to}`);
-      cache.set(k, shoots);
-      if (id === reqId.current) setShoots(shoots);
-    } catch (e) {
-      if (id === reqId.current) toast((e as Error).message, "error");
-    } finally {
-      if (id === reqId.current) setLoading(false);
-    }
-  }, [toast]);
+  const load = useCallback(
+    async (m: Date) => {
+      const k = monthKey(m);
+      const id = ++reqId.current;
+      if (!cache.has(k)) setLoading(true);
+      try {
+        const { from, to } = gridRange(m);
+        const { shoots } = await api<{ shoots: ShootDTO[] }>(`/api/shoots?from=${from}&to=${to}`);
+        cache.set(k, shoots);
+        if (id === reqId.current) setShoots(shoots);
+      } catch (e) {
+        if (id === reqId.current) toast((e as Error).message, "error");
+      } finally {
+        if (id === reqId.current) setLoading(false);
+      }
+    },
+    [toast],
+  );
 
   useEffect(() => {
     setShoots(cache.get(key) ?? []);
@@ -82,7 +85,7 @@ export function CalendarApp({ isAdmin }: { isAdmin: boolean }) {
     sp.delete("shoot");
     sp.delete("new");
     router.replace(`${pathname}?${sp.toString()}`, { scroll: false });
-    if (wantsNew) setForm({ mode: "create", date: selectedDate });
+    if (wantsNew && !readOnly) setForm({ mode: "create", date: selectedDate });
     if (sid) {
       const m = parseMonth(params.get("m"));
       if (monthKey(m) !== key) setMonth(m);
@@ -108,14 +111,14 @@ export function CalendarApp({ isAdmin }: { isAdmin: boolean }) {
       if (e.key === "ArrowLeft") goto(addMonths(month, -1));
       else if (e.key === "ArrowRight") goto(addMonths(month, 1));
       else if (e.key === "t" || e.key === "T") goto(parseMonth(null));
-      else if (e.key === "n" || e.key === "N") {
+      else if (!readOnly && (e.key === "n" || e.key === "N")) {
         e.preventDefault();
         setForm({ mode: "create", date: selectedDate });
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [overlayOpen, month, goto, selectedDate]);
+  }, [overlayOpen, month, goto, selectedDate, readOnly]);
 
   // Local list updates, then refetch to stay honest.
   const upsert = (s: ShootDTO) => {
@@ -164,8 +167,9 @@ export function CalendarApp({ isAdmin }: { isAdmin: boolean }) {
         onNext={() => goto(addMonths(month, 1))}
         onToday={() => goto(parseMonth(null))}
         onOpenShoot={setOpen}
-        onCreateAt={(date) => setForm({ mode: "create", date })}
-        onMove={(shoot, to) => setMove({ shoot, to })}
+        onCreateAt={readOnly ? undefined : (date) => setForm({ mode: "create", date })}
+        onMove={readOnly ? undefined : (shoot, to) => setMove({ shoot, to })}
+        mineLabel={readOnly ? "My shoots" : undefined}
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
         headerExtra={
@@ -185,27 +189,32 @@ export function CalendarApp({ isAdmin }: { isAdmin: boolean }) {
               {showCancelled ? <Eye size={15} /> : <EyeOff size={15} />}
               <span className="hidden lg:inline">Cancelled</span>
             </button>
-            <span className="hidden md:block">
-              <Button onClick={() => setForm({ mode: "create", date: isSameMonth(new Date(), month) ? today : ymd(month) })}>
-                <Plus size={16} /> New Shoot
-              </Button>
-            </span>
+            {!readOnly && (
+              <span className="hidden md:block">
+                <Button onClick={() => setForm({ mode: "create", date: isSameMonth(new Date(), month) ? today : ymd(month) })}>
+                  <Plus size={16} /> New Shoot
+                </Button>
+              </span>
+            )}
           </>
         }
       />
 
       {/* Mobile floating + (PRD §33) */}
-      <button
-        aria-label="New shoot"
-        onClick={() => setForm({ mode: "create", date: selectedDate })}
-        className="fixed right-5 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-30 grid h-14 w-14 place-items-center rounded-full bg-ink text-surface shadow-xl active:scale-95 md:hidden"
-      >
-        <Plus size={26} />
-      </button>
+      {!readOnly && (
+        <button
+          aria-label="New shoot"
+          onClick={() => setForm({ mode: "create", date: selectedDate })}
+          className="fixed right-5 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-30 grid h-14 w-14 place-items-center rounded-full bg-ink text-surface shadow-xl active:scale-95 md:hidden"
+        >
+          <Plus size={26} />
+        </button>
+      )}
 
       <ShootDrawer
         shoot={open}
         isAdmin={isAdmin}
+        readOnly={readOnly}
         onClose={() => setOpen(null)}
         onEdit={(s) => setForm({ mode: "edit", shoot: s })}
         onChanged={(s) => {

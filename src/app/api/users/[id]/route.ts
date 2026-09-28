@@ -17,6 +17,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const target = await db.user.findUnique({ where: { id } });
   if (!target) return bad("User not found", 404);
+  // Crew logins belong to a resource; they're managed from Resources, not promoted here.
+  if (target.role === "CREW" && fields.role) return bad("Crew logins are managed from Resources");
   if (id === g.user.id && (fields.role === "USER" || fields.status === "INACTIVE")) {
     return bad("You can't demote or block yourself");
   }
@@ -36,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const user = await db.user.update({
     where: { id },
     data,
-    select: { id: true, name: true, email: true, role: true, status: true, lastLoginAt: true, mustChangePw: true, createdAt: true },
+    select: { id: true, name: true, email: true, role: true, status: true, lastLoginAt: true, mustChangePw: true, createdAt: true, resource: { select: { id: true, name: true, role: true } } },
   });
 
   const bits = [

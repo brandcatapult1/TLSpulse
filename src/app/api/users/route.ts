@@ -7,7 +7,17 @@ import { bad, readJson } from "@/lib/http";
 import { tempPassword } from "@/lib/passwords";
 import { firstError, UserCreate } from "@/lib/validators";
 
-const publicUser = { id: true, name: true, email: true, role: true, status: true, lastLoginAt: true, mustChangePw: true, createdAt: true } as const;
+const publicUser = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  status: true,
+  lastLoginAt: true,
+  mustChangePw: true,
+  createdAt: true,
+  resource: { select: { id: true, name: true, role: true } },
+} as const;
 
 export async function GET() {
   const g = await requireAdmin();

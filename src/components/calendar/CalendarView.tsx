@@ -28,6 +28,8 @@ type Props = {
   onCreateAt?: (date: string) => void;
   onMove?: (s: ShootDTO, date: string) => void;
   headerExtra?: React.ReactNode;
+  /** Replaces "Shoots" in the header summary, e.g. "My shoots" for crew. */
+  mineLabel?: string;
   /** Mobile agenda selection; controlled so the FAB can use the chosen date. */
   selectedDate: string;
   onSelectDate: (d: string) => void;
@@ -76,7 +78,9 @@ export function CalendarView(p: Props) {
           Today
         </Button>
         <div className="tabular order-last w-full text-sm text-muted sm:order-none sm:w-auto">
-          <span className="font-medium text-ink">{inMonth.length} Shoots</span>
+          <span className="font-medium text-ink">
+            {inMonth.length} {p.mineLabel ?? "Shoots"}
+          </span>
           <span className="mx-1.5">·</span>
           <span className="inline-flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-social" /> {social} Social

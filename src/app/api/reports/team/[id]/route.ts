@@ -5,7 +5,7 @@ import { loadPeriod, readFilters } from "@/lib/report-data";
 import { teamDrilldown } from "@/lib/reports";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await requireUser("report.view");
+  const g = await requireUser("team.view");
   if (g.error) return g.error;
   const { id } = await params;
   const team = await db.team.findUnique({ where: { id }, select: { id: true, name: true, type: true } });

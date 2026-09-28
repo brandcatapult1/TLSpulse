@@ -1,7 +1,7 @@
 import { BrandsPage } from "@/components/masters/BrandsPage";
-import { requireUserPage } from "@/lib/auth";
+import { requireStaffPage } from "@/lib/auth";
 
 export default async function Page() {
-  const user = await requireUserPage();
+  const user = await requireStaffPage();
   return <BrandsPage isAdmin={user.role === "ADMIN"} />;
 }

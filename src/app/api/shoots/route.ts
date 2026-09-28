@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { writeAudit } from "@/lib/audit";
-import { requireUser } from "@/lib/auth";
+import { requireUser, shootScope } from "@/lib/auth";
 import { clashMessage } from "@/lib/clash-message";
 import { isClash } from "@/lib/conflicts";
 import { db } from "@/lib/db";
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const from = req.nextUrl.searchParams.get("from");
   const to = req.nextUrl.searchParams.get("to");
   if (!isYmd(from) || !isYmd(to)) return NextResponse.json({ error: "from and to are required (YYYY-MM-DD)" }, { status: 400 });
-  return NextResponse.json({ shoots: await listShoots(from, to) });
+  return NextResponse.json({ shoots: await listShoots(from, to, shootScope(g.user)) });
 }
 
 export async function POST(req: NextRequest) {

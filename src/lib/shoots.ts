@@ -36,17 +36,17 @@ export function toShootDTO(s: ShootRow): ShootDTO {
   };
 }
 
-export async function listShoots(from: string, to: string): Promise<ShootDTO[]> {
+export async function listShoots(from: string, to: string, scope: Prisma.ShootWhereInput = {}): Promise<ShootDTO[]> {
   const rows = await db.shoot.findMany({
-    where: { date: { gte: toDbDate(from), lte: toDbDate(to) }, deletedAt: null },
+    where: { date: { gte: toDbDate(from), lte: toDbDate(to) }, deletedAt: null, ...scope },
     include: shootInclude,
     orderBy: { date: "asc" },
   });
   return sortShoots(rows.map(toShootDTO));
 }
 
-export async function getShoot(id: string) {
-  return db.shoot.findFirst({ where: { id, deletedAt: null }, include: shootInclude });
+export async function getShoot(id: string, scope: Prisma.ShootWhereInput = {}) {
+  return db.shoot.findFirst({ where: { id, deletedAt: null, ...scope }, include: shootInclude });
 }
 
 /** Everything on a date that could clash: live (non-cancelled, non-deleted) shoots. */

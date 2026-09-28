@@ -6,7 +6,7 @@ export default async function CalendarPage() {
   const user = await requireUserPage();
   return (
     <Suspense>
-      <CalendarApp isAdmin={user.role === "ADMIN"} />
+      <CalendarApp isAdmin={user.role === "ADMIN"} readOnly={user.role === "CREW"} />
     </Suspense>
   );
 }

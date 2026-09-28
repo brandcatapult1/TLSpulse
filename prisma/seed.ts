@@ -25,6 +25,7 @@ async function main() {
   const user = await db.user.create({
     data: { name: "Dhruv", email: "dhruv@tls.local", role: "USER", passwordHash: await bcrypt.hash(userPw, 10) },
   });
+  const crewPw = tempPassword();
 
   // Internal/External is a property of the team; members inherit it.
   const teamDefs: [string, "INTERNAL" | "EXTERNAL", [string, string][]][] = [
@@ -39,6 +40,10 @@ async function main() {
     for (const [name, role] of members) {
       const r = await db.resource.create({ data: { name, role, teamId: team.id } });
       res[name] = r.id;
+      // Sample crew login: Rohit sees only his own shoots.
+      if (name === "Rohit") {
+        await db.user.create({ data: { name, email: "rohit@tls.local", role: "CREW", resourceId: r.id, passwordHash: await bcrypt.hash(crewPw, 10) } });
+      }
     }
   }
 
@@ -107,7 +112,7 @@ async function main() {
     "seed-credentials.local.txt",
     `TLS Pulse — local logins (created ${new Date().toLocaleString("en-IN")})\n` +
       `Re-running the seed replaces these. You'll be asked to set your own password on first login.\n\n` +
-      `Admin  vaibhav@tls.local  ${adminPw}\nUser   dhruv@tls.local    ${userPw}\n\nPublic calendar: ${appUrl}/bookings\n`,
+      `Admin  vaibhav@tls.local  ${adminPw}\nUser   dhruv@tls.local    ${userPw}\nCrew   rohit@tls.local    ${crewPw}   (Rohit — sees only his own shoots)\n\nPublic calendar: ${appUrl}/bookings\n`,
   );
   console.log(`Seeded ${rows.length} shoots for ${ym}. Credentials → seed-credentials.local.txt`);
 }

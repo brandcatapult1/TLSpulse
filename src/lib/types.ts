@@ -31,6 +31,8 @@ export type ResourceDTO = {
   teamType: Engagement; // Internal/External comes from the team
   status: ActiveState;
   shootsThisMonth?: number;
+  /** Admin-only: the resource's own view-only login, if any. */
+  login?: { id: string; email: string; status: ActiveState; mustChangePw: boolean; lastLoginAt: string | null } | null;
 };
 
 export type ResourceConflict = {

@@ -26,8 +26,9 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   const g = await requireUser("resource.write");
   if (g.error) return g.error;
   const { id } = await params;
-  const r = await db.resource.findUnique({ where: { id }, include: { _count: { select: { assignments: true } } } });
+  const r = await db.resource.findUnique({ where: { id }, include: { _count: { select: { assignments: true } }, login: { select: { id: true } } } });
   if (!r) return bad("Resource not found", 404);
+  if (r.login) return bad(`${r.name} has a login. Switch it off and deactivate instead.`, 409);
   if (r._count.assignments > 0) return bad(`${r.name} is on ${r._count.assignments} shoot(s). Deactivate instead.`, 409);
   await db.resource.delete({ where: { id } });
   await writeAudit({ actorId: g.user.id, action: "RESOURCE_DELETED", entity: "resource", entityId: id, summary: `${g.user.name} deleted ${r.name}` });

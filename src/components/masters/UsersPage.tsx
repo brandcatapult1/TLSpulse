@@ -10,7 +10,18 @@ import { useToast } from "../Toast";
 import { Button, FormError, Input, Label, PageHeader, Pill, Skeleton } from "../ui";
 import { Table, Td, Th } from "./Table";
 
-type User = { id: string; name: string; email: string; role: "ADMIN" | "USER"; status: "ACTIVE" | "INACTIVE"; lastLoginAt: string | null; mustChangePw: boolean; createdAt: string };
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: "ADMIN" | "USER" | "CREW";
+  status: "ACTIVE" | "INACTIVE";
+  lastLoginAt: string | null;
+  mustChangePw: boolean;
+  createdAt: string;
+  resource: { id: string; name: string; role: string } | null;
+};
+const ROLE_PILL = { ADMIN: ["Admin", "bg-social-bg text-social"], USER: ["User", "bg-soft text-muted"], CREW: ["Crew", "bg-realtime-bg text-realtime"] } as const;
 
 export function UsersPage({ meId }: { meId: string }) {
   const toast = useToast();
@@ -56,7 +67,8 @@ export function UsersPage({ meId }: { meId: string }) {
               </Td>
               <Td className="hidden text-muted sm:table-cell">{u.email}</Td>
               <Td>
-                <Pill className={u.role === "ADMIN" ? "bg-social-bg text-social" : "bg-soft text-muted"}>{u.role === "ADMIN" ? "Admin" : "User"}</Pill>
+                <Pill className={ROLE_PILL[u.role][1]}>{ROLE_PILL[u.role][0]}</Pill>
+                {u.role === "CREW" && u.resource && <span className="ml-1.5 text-xs text-muted">{u.resource.role}</span>}
               </Td>
               <Td className="hidden md:table-cell">
                 {u.status === "INACTIVE" ? (
@@ -132,7 +144,7 @@ function UserDrawer({
   onDone: (msg: string, issued?: { name: string; email: string; password: string }) => void;
 }) {
   const existing = user && user !== "new" ? user : null;
-  const [f, setF] = useState({ name: "", email: "", role: "USER" as "ADMIN" | "USER" });
+  const [f, setF] = useState({ name: "", email: "", role: "USER" as "ADMIN" | "USER" | "CREW" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const isMe = existing?.id === meId;
@@ -157,7 +169,8 @@ function UserDrawer({
     }
   }
 
-  const save = () => (existing ? call({ name: f.name, role: f.role }, "User updated") : call(f, "User added"));
+  const isCrew = existing?.role === "CREW";
+  const save = () => (existing ? call(isCrew ? { name: f.name } : { name: f.name, role: f.role }, "User updated") : call(f, "User added"));
 
   return (
     <Drawer
@@ -190,23 +203,29 @@ function UserDrawer({
           <Label htmlFor="uemail">Email</Label>
           <Input id="uemail" type="email" value={f.email} disabled={!!existing} onChange={(e) => setF({ ...f, email: e.target.value })} required />
         </div>
-        <div>
-          <Label>Role</Label>
-          <div className="grid grid-cols-2 gap-2">
-            {(["USER", "ADMIN"] as const).map((r) => (
-              <button
-                key={r}
-                type="button"
-                disabled={isMe}
-                onClick={() => setF({ ...f, role: r })}
-                className={clsx("rounded-xl border px-3 py-2 text-left text-sm disabled:opacity-50", f.role === r ? "border-ink bg-soft" : "border-line hover:bg-soft")}
-              >
-                <span className="block font-medium">{r === "ADMIN" ? "Admin" : "User"}</span>
-                <span className="text-xs text-muted">{r === "ADMIN" ? "Everything, incl. users & master data" : "Calendar, shoots, brands, reports"}</span>
-              </button>
-            ))}
+        {isCrew ? (
+          <p className="rounded-xl bg-soft px-3 py-2.5 text-sm">
+            <b>Crew login</b> for {existing?.resource?.name ?? "a removed resource"}. Sees only their own shoots and report. Manage it from <b>Resources</b>.
+          </p>
+        ) : (
+          <div>
+            <Label>Role</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["USER", "ADMIN"] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  disabled={isMe}
+                  onClick={() => setF({ ...f, role: r })}
+                  className={clsx("rounded-xl border px-3 py-2 text-left text-sm disabled:opacity-50", f.role === r ? "border-ink bg-soft" : "border-line hover:bg-soft")}
+                >
+                  <span className="block font-medium">{r === "ADMIN" ? "Admin" : "User"}</span>
+                  <span className="text-xs text-muted">{r === "ADMIN" ? "Everything, incl. users & master data" : "Calendar, shoots, brands, reports"}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
         {!existing && <p className="text-xs text-muted">A temporary password is generated; you&apos;ll see it once after saving.</p>}
         <FormError message={error} />
         <button type="submit" hidden />
@@ -227,7 +246,9 @@ function UserDrawer({
                 size="sm"
                 className={existing.status === "ACTIVE" ? "text-danger" : ""}
                 disabled={busy}
-                onClick={() => call({ status: existing.status === "ACTIVE" ? "INACTIVE" : "ACTIVE" }, existing.status === "ACTIVE" ? `${existing.name} blocked` : `${existing.name} unblocked`)}
+                onClick={() =>
+                  call({ status: existing.status === "ACTIVE" ? "INACTIVE" : "ACTIVE" }, existing.status === "ACTIVE" ? `${existing.name} blocked` : `${existing.name} unblocked`)
+                }
               >
                 {existing.status === "ACTIVE" ? "Block access" : "Unblock"}
               </Button>

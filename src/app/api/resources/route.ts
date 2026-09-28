@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const [rows, counts] = await Promise.all([
     db.resource.findMany({
       where: activeOnly ? { status: "ACTIVE" } : {},
-      include: { team: { select: { name: true, type: true } } },
+      include: { team: { select: { name: true, type: true } }, login: { select: { id: true, email: true, status: true, mustChangePw: true, lastLoginAt: true } } },
       orderBy: [{ team: { name: "asc" } }, { name: "asc" }],
     }),
     currentMonthCounts(),
@@ -28,6 +28,8 @@ export async function GET(req: NextRequest) {
       teamType: r.team.type,
       status: r.status,
       shootsThisMonth: counts.resource.get(r.id) ?? 0,
+      // Login details are for admins only.
+      ...(g.user.role === "ADMIN" ? { login: r.login } : {}),
     })),
   });
 }

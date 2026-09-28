@@ -39,7 +39,16 @@ const ADMIN_NAV: NavItem[] = [
 
 const COLLAPSE_KEY = "tlsp.sidebar.collapsed";
 
-export function AppShell({ name, role, children }: { name: string; role: "ADMIN" | "USER"; children: React.ReactNode }) {
+type Role = "ADMIN" | "USER" | "CREW";
+const ROLE_LABEL: Record<Role, string> = { ADMIN: "Admin", USER: "User", CREW: "Crew" };
+// Crew see only their own calendar and report.
+const CREW_NAV: NavItem[] = [
+  { href: "/", label: "My calendar", Icon: CalendarDays },
+  { href: "/reports", label: "My report", Icon: BarChart3 },
+];
+const navFor = (role: Role) => (role === "CREW" ? CREW_NAV : NAV);
+
+export function AppShell({ name, role, children }: { name: string; role: Role; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   // The page the user just clicked, highlighted immediately while it loads.
@@ -48,7 +57,7 @@ export function AppShell({ name, role, children }: { name: string; role: "ADMIN"
 
   // Warm the other sections once idle so the first click on each is fast.
   useEffect(() => {
-    const hrefs = [...NAV, ...(role === "ADMIN" ? ADMIN_NAV : [])].map((n) => n.href);
+    const hrefs = [...navFor(role), ...(role === "ADMIN" ? ADMIN_NAV : [])].map((n) => n.href);
     const warm = () => hrefs.forEach((h) => router.prefetch(h));
     const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
     if (w.requestIdleCallback) w.requestIdleCallback(warm);
@@ -118,7 +127,7 @@ export function AppShell({ name, role, children }: { name: string; role: "ADMIN"
           </>
         )}
       </button>
-      <NavGroup items={NAV} compact={compact} isActive={isActive} onNavigate={setPendingHref} />
+      <NavGroup items={navFor(role)} compact={compact} isActive={isActive} onNavigate={setPendingHref} />
       {role === "ADMIN" && (
         <>
           {!compact ? <div className="mt-5 mb-1 px-3 text-[11px] font-semibold tracking-wide text-muted uppercase">Admin</div> : <div className="my-3 h-px bg-line" />}
@@ -131,13 +140,13 @@ export function AppShell({ name, role, children }: { name: string; role: "ADMIN"
   const userBlock = (compact: boolean) => (
     <div className={clsx("border-t border-line pt-3", compact && "flex flex-col items-center gap-1")}>
       <div className={clsx("flex items-center gap-2.5", compact ? "justify-center" : "px-2 pb-2")}>
-        <span title={compact ? `${name} · ${role === "ADMIN" ? "Admin" : "User"}` : undefined} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-social-bg text-xs font-semibold text-social">
+        <span title={compact ? `${name} · ${ROLE_LABEL[role]}` : undefined} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-social-bg text-xs font-semibold text-social">
           {name.slice(0, 1).toUpperCase()}
         </span>
         {!compact && (
           <div className="min-w-0">
             <div className="truncate text-sm font-medium">{name}</div>
-            <div className="text-xs text-muted">{role === "ADMIN" ? "Admin" : "User"}</div>
+            <div className="text-xs text-muted">{ROLE_LABEL[role]}</div>
           </div>
         )}
       </div>

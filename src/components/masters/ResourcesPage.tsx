@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { BarChart3, Plus, Search } from "lucide-react";
+import { BarChart3, Copy, KeyRound, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
@@ -126,6 +126,13 @@ export function ResourcesPage({ isAdmin }: { isAdmin: boolean }) {
                 <tr key={r.id} onClick={() => isAdmin && setEditRes(r)} className={clsx(isAdmin && "cursor-pointer", "hover:bg-soft/60")}>
                   <Td className="font-medium">
                     {r.name}
+                    {r.login && (
+                      <KeyRound
+                        size={12}
+                        className={clsx("ml-1.5 inline", r.login.status === "ACTIVE" ? "text-ok" : "text-muted")}
+                        aria-label={r.login.status === "ACTIVE" ? "Has a crew login" : "Crew login switched off"}
+                      />
+                    )}
                     <span className="block text-xs font-normal text-muted sm:hidden">
                       {r.role} · {r.teamName} · {r.teamType === "EXTERNAL" ? "External" : "Internal"}
                     </span>
@@ -140,7 +147,12 @@ export function ResourcesPage({ isAdmin }: { isAdmin: boolean }) {
                     <StatusDot active={r.status === "ACTIVE"} />
                   </Td>
                   <Td>
-                    <Link href={`/reports?resource=${r.id}`} onClick={(e) => e.stopPropagation()} title={`${r.name}'s shoots`} className="grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-soft hover:text-ink">
+                    <Link
+                      href={`/reports?resource=${r.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      title={`${r.name}'s shoots`}
+                      className="grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-soft hover:text-ink"
+                    >
                       <BarChart3 size={15} />
                     </Link>
                   </Td>
@@ -243,7 +255,11 @@ function ResourceDrawer({ resource, teams, onClose, onSaved }: { resource: Resou
   }, [resource]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedTeam = teams.find((t) => t.id === f.teamId);
-  const save = () => run(() => (existing ? api(`/api/resources/${existing.id}`, { method: "PATCH", body: f }) : api("/api/resources", { body: f })), existing ? "Resource updated" : `${f.name} added`);
+  const save = () =>
+    run(
+      () => (existing ? api(`/api/resources/${existing.id}`, { method: "PATCH", body: f }) : api("/api/resources", { body: f })),
+      existing ? "Resource updated" : `${f.name} added`,
+    );
 
   return (
     <>
@@ -322,13 +338,15 @@ function ResourceDrawer({ resource, teams, onClose, onSaved }: { resource: Resou
             </Select>
             {selectedTeam && (
               <p className="mt-2 flex items-center gap-2 text-xs text-muted">
-                <TeamTypeBadge type={selectedTeam.type} /> {f.name.trim() || "This person"} will be marked {selectedTeam.type === "EXTERNAL" ? "External" : "Internal"}, from the team.
+                <TeamTypeBadge type={selectedTeam.type} /> {f.name.trim() || "This person"} will be marked {selectedTeam.type === "EXTERNAL" ? "External" : "Internal"}, from the
+                team.
               </p>
             )}
           </div>
           <FormError message={error} />
           <button type="submit" hidden />
         </form>
+        {existing && <CrewLogin resource={existing} onChanged={(m) => onSaved(m)} />}
       </Drawer>
       <Dialog
         open={confirmDelete}
@@ -443,14 +461,115 @@ function TeamDrawer({ team, onClose, onSaved }: { team: TeamDTO | "new" | null; 
   );
 }
 
+/** Admin: give a resource their own view-only login (sees only their shoots and report). */
+function CrewLogin({ resource, onChanged }: { resource: ResourceDTO; onChanged: (msg: string) => void }) {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [issued, setIssued] = useState<string | null>(null);
+  const login = resource.login;
+  const active = login?.status === "ACTIVE";
+
+  async function run(fn: () => Promise<{ tempPassword?: string } | unknown>, msg: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = (await fn()) as { tempPassword?: string };
+      if (r?.tempPassword) setIssued(r.tempPassword);
+      else onChanged(msg);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="mt-6 border-t border-line pt-4">
+      <h3 className="flex items-center gap-2 text-sm font-semibold">
+        <KeyRound size={15} /> Crew login
+      </h3>
+      <p className="mt-1 text-xs text-muted">Lets {resource.name} log in to see only their own shoots and report. They can&apos;t create or change anything.</p>
+      {login ? (
+        <div className="mt-3 rounded-xl bg-soft px-3 py-2.5 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-mono text-[13px]">{login.email}</span>
+            <span className={clsx("text-xs", active ? "text-ok" : "text-muted")}>{active ? (login.mustChangePw ? "Awaiting first login" : "Active") : "Switched off"}</span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => run(() => api(`/api/resources/${resource.id}/login`, { body: {} }), "")}>
+              {active ? "Reset password" : "Switch on again"}
+            </Button>
+            {active && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-danger"
+                disabled={busy}
+                onClick={() => run(() => api(`/api/resources/${resource.id}/login`, { method: "DELETE" }), `${resource.name}'s login switched off`)}
+              >
+                Switch off
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <form
+          className="mt-3 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            run(() => api(`/api/resources/${resource.id}/login`, { body: { email } }), "");
+          }}
+        >
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={`${resource.name.toLowerCase().split(" ")[0]}@…`}
+            aria-label="Login email"
+            required
+          />
+          <Button type="submit" disabled={busy || !email.trim()}>
+            Give login
+          </Button>
+        </form>
+      )}
+      <FormError message={error} />
+      <Dialog
+        open={!!issued}
+        onClose={() => {
+          setIssued(null);
+          onChanged(`${resource.name} can now log in`);
+        }}
+        title="Temporary password"
+        footer={
+          <Button
+            onClick={() => {
+              setIssued(null);
+              onChanged(`${resource.name} can now log in`);
+            }}
+          >
+            Done
+          </Button>
+        }
+      >
+        <p className="text-muted">
+          Share this with <b className="text-ink">{resource.name}</b>. It&apos;s shown only once; they&apos;ll set their own password on first login.
+        </p>
+        <div className="mt-3 flex items-center gap-2 rounded-xl bg-soft px-3 py-2">
+          <code className="flex-1 font-mono text-base">{issued}</code>
+          <Button variant="outline" size="sm" onClick={() => issued && navigator.clipboard.writeText(issued)}>
+            <Copy size={14} /> Copy
+          </Button>
+        </div>
+      </Dialog>
+    </section>
+  );
+}
+
 export function TeamTypeBadge({ type }: { type: Engagement }) {
   return (
-    <span
-      className={clsx(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-        type === "EXTERNAL" ? "bg-warn-bg text-warn" : "bg-ok/10 text-ok",
-      )}
-    >
+    <span className={clsx("inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium", type === "EXTERNAL" ? "bg-warn-bg text-warn" : "bg-ok/10 text-ok")}>
       {type === "EXTERNAL" ? "External" : "Internal"}
     </span>
   );

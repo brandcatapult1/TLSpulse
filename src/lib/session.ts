@@ -4,7 +4,7 @@ import { SignJWT, jwtVerify } from "jose";
 export const SESSION_COOKIE = "tlsp_session";
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
-export type Role = "ADMIN" | "USER";
+export type Role = "ADMIN" | "USER" | "CREW";
 export type SessionClaims = { sub: string; role: Role; name: string; mustChangePw: boolean };
 
 function secret() {
@@ -29,7 +29,7 @@ export async function verifySession(token: string | undefined): Promise<SessionC
     if (!payload.sub) return null;
     return {
       sub: payload.sub,
-      role: payload.role === "ADMIN" ? "ADMIN" : "USER",
+      role: payload.role === "ADMIN" || payload.role === "CREW" ? payload.role : "USER",
       name: String(payload.name ?? ""),
       mustChangePw: Boolean(payload.mustChangePw),
     };
