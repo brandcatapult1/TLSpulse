@@ -1,24 +1,15 @@
-import crypto from "crypto";
 import { db } from "./db";
 
-export const PUBLIC_TOKEN_KEY = "public_calendar_token";
+// The public calendar lives at a fixed address (/bookings). Admins can switch sharing off.
+export const PUBLIC_CALENDAR_PATH = "/bookings";
+const ENABLED_KEY = "public_calendar_enabled";
 
-export async function getPublicToken(): Promise<string> {
-  const s = await db.setting.findUnique({ where: { key: PUBLIC_TOKEN_KEY } });
-  if (s) return s.value;
-  return rotatePublicToken();
+export async function isPublicCalendarEnabled(): Promise<boolean> {
+  const s = await db.setting.findUnique({ where: { key: ENABLED_KEY } });
+  return s?.value !== "0"; // on unless an admin turned it off
 }
 
-export async function rotatePublicToken(): Promise<string> {
-  const value = crypto.randomBytes(24).toString("base64url");
-  await db.setting.upsert({ where: { key: PUBLIC_TOKEN_KEY }, create: { key: PUBLIC_TOKEN_KEY, value }, update: { value } });
-  return value;
-}
-
-export async function isPublicToken(token: string): Promise<boolean> {
-  const s = await db.setting.findUnique({ where: { key: PUBLIC_TOKEN_KEY } });
-  if (!s) return false;
-  const a = Buffer.from(s.value);
-  const b = Buffer.from(token);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+export async function setPublicCalendarEnabled(enabled: boolean) {
+  const value = enabled ? "1" : "0";
+  await db.setting.upsert({ where: { key: ENABLED_KEY }, create: { key: ENABLED_KEY, value }, update: { value } });
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { format } from "date-fns";
-import { Copy, ExternalLink, RefreshCw } from "lucide-react";
+import clsx from "clsx";
+import { Copy, ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Dialog } from "../Overlay";
@@ -12,11 +13,11 @@ type Entry = { id: string; summary: string; action: string; entity: string; at: 
 
 export function SettingsPage() {
   const toast = useToast();
-  const [token, setToken] = useState<string | null>(null);
+  const [link, setLink] = useState<{ path: string; enabled: boolean } | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [more, setMore] = useState(true);
-  const url = token ? `${window.location.origin}/p/${token}` : "";
+  const url = link ? `${window.location.origin}${link.path}` : "";
 
   const loadAudit = useCallback(async (before?: string) => {
     const r = await api<{ entries: Entry[] }>(`/api/audit${before ? `?before=${encodeURIComponent(before)}` : ""}`);
@@ -25,18 +26,21 @@ export function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    api<{ token: string }>("/api/admin/public-link")
-      .then((r) => setToken(r.token))
+    api<{ path: string; enabled: boolean }>("/api/admin/public-link")
+      .then(setLink)
       .catch((e) => toast(e.message, "error"));
     loadAudit().catch(() => {});
   }, [loadAudit, toast]);
 
-  async function rotate() {
+  async function setSharing(enabled: boolean) {
     setConfirm(false);
-    const r = await api<{ token: string }>("/api/admin/public-link", { method: "POST" });
-    setToken(r.token);
-    toast("New public link created. The old link no longer works.");
-    loadAudit();
+    try {
+      setLink(await api<{ path: string; enabled: boolean }>("/api/admin/public-link", { body: { enabled } }));
+      toast(enabled ? "Public calendar is shared again" : "Public calendar turned off");
+      loadAudit();
+    } catch (e) {
+      toast((e as Error).message, "error");
+    }
   }
 
   return (
@@ -44,36 +48,57 @@ export function SettingsPage() {
       <PageHeader title="Settings" />
 
       <section className="rounded-2xl border border-line p-5">
-        <h2 className="font-semibold">Public calendar link</h2>
-        <p className="mt-1 text-sm text-muted">
-          Read-only calendar for Account Management, other departments and agencies. No login needed. Shows brand, type, time, location and deployed resources — never internal notes or cancelled shoots.
-        </p>
-        {token ? (
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <input readOnly value={url} onFocus={(e) => e.target.select()} className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-soft px-3 font-mono text-xs" />
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  navigator.clipboard.writeText(url);
-                  toast("Link copied");
-                }}
-              >
-                <Copy size={15} /> Copy
-              </Button>
-              <a href={url} target="_blank" rel="noreferrer">
-                <Button variant="outline">
-                  <ExternalLink size={15} /> Open
-                </Button>
-              </a>
-            </div>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-semibold">Public calendar</h2>
+            <p className="mt-1 text-sm text-muted">
+              Read-only calendar for Account Management, other departments and agencies. No login needed. Shows brand, type, time, location and deployed resources — never internal notes or
+              cancelled shoots.
+            </p>
           </div>
+          {link && (
+            <button
+              role="switch"
+              aria-checked={link.enabled}
+              aria-label="Share public calendar"
+              onClick={() => (link.enabled ? setConfirm(true) : setSharing(true))}
+              className={clsx("relative mt-1 h-6 w-11 shrink-0 rounded-full transition-colors", link.enabled ? "bg-ok" : "bg-line")}
+            >
+              <span className={clsx("absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-all", link.enabled ? "left-[22px]" : "left-0.5")} />
+            </button>
+          )}
+        </div>
+        {link ? (
+          <>
+            <div className={clsx("mt-4 flex flex-col gap-2 sm:flex-row", !link.enabled && "opacity-50")}>
+              <input readOnly value={url} onFocus={(e) => e.target.select()} className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-soft px-3 font-mono text-sm" />
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  disabled={!link.enabled}
+                  onClick={() => {
+                    navigator.clipboard.writeText(url);
+                    toast("Link copied");
+                  }}
+                >
+                  <Copy size={15} /> Copy
+                </Button>
+                <a href={url} target="_blank" rel="noreferrer" aria-disabled={!link.enabled} className={clsx(!link.enabled && "pointer-events-none")}>
+                  <Button variant="outline" disabled={!link.enabled}>
+                    <ExternalLink size={15} /> Open
+                  </Button>
+                </a>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-muted">
+              {link.enabled
+                ? "Sharing is on. Anyone with this address can view the calendar, so share it only with the teams who need it."
+                : "Sharing is off. The address shows a “not being shared” message until you switch it back on."}
+            </p>
+          </>
         ) : (
           <Skeleton className="mt-4 h-10" />
         )}
-        <Button variant="ghost" size="sm" className="mt-3 text-danger" onClick={() => setConfirm(true)}>
-          <RefreshCw size={14} /> Regenerate link
-        </Button>
       </section>
 
       <section className="mt-6 rounded-2xl border border-line p-5">
@@ -103,19 +128,19 @@ export function SettingsPage() {
       <Dialog
         open={confirm}
         onClose={() => setConfirm(false)}
-        title="Regenerate public link?"
+        title="Turn off the public calendar?"
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirm(false)}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={rotate}>
-              Regenerate
+            <Button variant="danger" onClick={() => setSharing(false)}>
+              Turn off
             </Button>
           </>
         }
       >
-        <p className="text-muted">Everyone using the current link will lose access until you share the new one.</p>
+        <p className="text-muted">Account Management and agencies won&apos;t be able to see shoot dates until you switch it back on.</p>
       </Dialog>
     </div>
   );

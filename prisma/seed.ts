@@ -2,7 +2,6 @@
 // Temp passwords are written to seed-credentials.local.txt (gitignored), never committed.
 import { PrismaClient, ShootType, ShootStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import fs from "fs";
 import { tempPassword } from "../src/lib/passwords";
 
@@ -10,8 +9,6 @@ const db = new PrismaClient();
 const dbDate = (ymd: string) => new Date(`${ymd}T00:00:00Z`);
 
 async function main() {
-  // Keep the public calendar link stable across re-seeds so shared links keep working.
-  const existingToken = (await db.setting.findUnique({ where: { key: "public_calendar_token" } }))?.value;
   await db.auditLog.deleteMany();
   await db.shootAssignment.deleteMany();
   await db.shoot.deleteMany();
@@ -19,7 +16,6 @@ async function main() {
   await db.team.deleteMany();
   await db.brand.deleteMany();
   await db.user.deleteMany();
-  await db.setting.deleteMany();
 
   const adminPw = tempPassword();
   const userPw = tempPassword();
@@ -105,15 +101,13 @@ async function main() {
     });
   }
 
-  const token = existingToken ?? crypto.randomBytes(24).toString("base64url");
-  await db.setting.create({ data: { key: "public_calendar_token", value: token } });
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   fs.writeFileSync(
     "seed-credentials.local.txt",
     `TLS Pulse — local logins (created ${new Date().toLocaleString("en-IN")})\n` +
       `Re-running the seed replaces these. You'll be asked to set your own password on first login.\n\n` +
-      `Admin  vaibhav@tls.local  ${adminPw}\nUser   dhruv@tls.local    ${userPw}\n\nPublic calendar: ${appUrl}/p/${token}\n`,
+      `Admin  vaibhav@tls.local  ${adminPw}\nUser   dhruv@tls.local    ${userPw}\n\nPublic calendar: ${appUrl}/bookings\n`,
   );
   console.log(`Seeded ${rows.length} shoots for ${ym}. Credentials → seed-credentials.local.txt`);
 }

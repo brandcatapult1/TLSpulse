@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySession } from "@/lib/session";
 
 // Public: login, the read-only public calendar, and the login/logout APIs.
-const PUBLIC_PREFIXES = ["/login", "/p/", "/api/auth/login", "/api/auth/logout"];
+const PUBLIC_PREFIXES = ["/login", "/bookings", "/p/", "/api/auth/login", "/api/auth/logout"];
 // Signed-in but still allowed while a password change is pending.
 const PW_CHANGE_ALLOWED = ["/change-password", "/api/auth/password", "/api/auth/logout"];
 
