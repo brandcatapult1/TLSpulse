@@ -17,3 +17,9 @@ npm run dev                 # http://localhost:3000
 ```
 
 Re-running the seed wipes app data and issues new temporary passwords.
+
+```bash
+npm test                    # unit tests: conflicts, report counting, periods, dates
+npm run lint
+NEXT_DIST_DIR=.next-build npx next build   # production build without disturbing `npm run dev`
+```

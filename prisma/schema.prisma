@@ -59,6 +59,7 @@ model Brand {
 model Team {
   id        String      @id @default(cuid())
   name      String      @unique
+  type      Engagement  @default(INTERNAL)
   status    ActiveState @default(ACTIVE)
   resources Resource[]
   createdAt DateTime    @default(now())
@@ -71,7 +72,6 @@ model Resource {
   role        String
   teamId      String
   team        Team              @relation(fields: [teamId], references: [id])
-  engagement  Engagement        @default(INTERNAL)
   status      ActiveState       @default(ACTIVE)
   assignments ShootAssignment[]
   createdAt   DateTime          @default(now())

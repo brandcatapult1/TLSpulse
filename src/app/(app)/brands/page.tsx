@@ -1,5 +1,7 @@
-import { Placeholder } from "@/components/Placeholder";
+import { BrandsPage } from "@/components/masters/BrandsPage";
+import { requireUserPage } from "@/lib/auth";
 
-export default function BrandsPage() {
-  return <Placeholder title="Brands" milestone="M4 · Masters" />;
+export default async function Page() {
+  const user = await requireUserPage();
+  return <BrandsPage isAdmin={user.role === "ADMIN"} />;
 }

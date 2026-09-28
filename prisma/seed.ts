@@ -28,16 +28,18 @@ async function main() {
     data: { name: "Dhruv", email: "dhruv@tls.local", role: "USER", passwordHash: await bcrypt.hash(userPw, 10) },
   });
 
-  const teamDefs: Record<string, [string, string, "INTERNAL" | "EXTERNAL"][]> = {
-    Photography: [["Rohit", "Photographer", "INTERNAL"], ["Karan", "Photographer", "INTERNAL"], ["Aditya", "Photographer", "EXTERNAL"]],
-    Video: [["Aman", "Videographer", "EXTERNAL"], ["Rahul", "Videographer", "INTERNAL"]],
-    Production: [["Neha", "Producer", "INTERNAL"], ["Priya", "Producer", "INTERNAL"]],
-  };
+  // Internal/External is a property of the team; members inherit it.
+  const teamDefs: [string, "INTERNAL" | "EXTERNAL", [string, string][]][] = [
+    ["Photography", "INTERNAL", [["Rohit", "Photographer"], ["Karan", "Photographer"]]],
+    ["Video", "INTERNAL", [["Rahul", "Videographer"]]],
+    ["Production", "INTERNAL", [["Neha", "Producer"], ["Priya", "Producer"]]],
+    ["Freelance Crew", "EXTERNAL", [["Aditya", "Photographer"], ["Aman", "Videographer"]]],
+  ];
   const res: Record<string, string> = {};
-  for (const [teamName, members] of Object.entries(teamDefs)) {
-    const team = await db.team.create({ data: { name: teamName } });
-    for (const [name, role, engagement] of members) {
-      const r = await db.resource.create({ data: { name, role, engagement, teamId: team.id } });
+  for (const [teamName, type, members] of teamDefs) {
+    const team = await db.team.create({ data: { name: teamName, type } });
+    for (const [name, role] of members) {
+      const r = await db.resource.create({ data: { name, role, teamId: team.id } });
       res[name] = r.id;
     }
   }

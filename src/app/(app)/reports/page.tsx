@@ -1,5 +1,10 @@
-import { Placeholder } from "@/components/Placeholder";
+import { Suspense } from "react";
+import { ReportsPage } from "@/components/reports/ReportsPage";
 
-export default function ReportsPage() {
-  return <Placeholder title="Reports" milestone="M7 · Reports" />;
+export default function Page() {
+  return (
+    <Suspense>
+      <ReportsPage />
+    </Suspense>
+  );
 }

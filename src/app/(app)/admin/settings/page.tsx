@@ -1,7 +1,7 @@
-import { Placeholder } from "@/components/Placeholder";
+import { SettingsPage } from "@/components/masters/SettingsPage";
 import { requireAdminPage } from "@/lib/auth";
 
-export default async function SettingsPage() {
+export default async function Page() {
   await requireAdminPage();
-  return <Placeholder title="Settings" milestone="M4 · Masters (public link, audit log)" />;
+  return <SettingsPage />;
 }

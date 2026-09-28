@@ -1,0 +1,46 @@
+// Client-safe shapes shared by API routes and UI.
+export type ShootType = "SOCIAL_MEDIA" | "REAL_TIME_VISIT";
+export type ShootStatus = "PLANNED" | "RESCHEDULED" | "CANCELLED";
+export type Engagement = "INTERNAL" | "EXTERNAL";
+export type ActiveState = "ACTIVE" | "INACTIVE";
+
+export type AssignedResource = { id: string; name: string; role: string; teamName: string };
+
+export type ShootDTO = {
+  id: string;
+  brandId: string;
+  brandName: string;
+  shootType: ShootType;
+  date: string; // YYYY-MM-DD
+  startTime: string | null; // HH:MM, 24h, IST
+  endTime: string | null;
+  location: string | null;
+  status: ShootStatus;
+  notes?: string | null; // never present on the public calendar
+  resources: AssignedResource[];
+};
+
+export type BrandDTO = { id: string; name: string; companyGroup: string | null; status: ActiveState; createdAt: string; shootsThisMonth?: number };
+export type TeamDTO = { id: string; name: string; type: Engagement; status: ActiveState; memberCount?: number };
+export type ResourceDTO = {
+  id: string;
+  name: string;
+  role: string;
+  teamId: string;
+  teamName: string;
+  teamType: Engagement; // Internal/External comes from the team
+  status: ActiveState;
+  shootsThisMonth?: number;
+};
+
+export type ResourceConflict = {
+  resourceId: string;
+  resourceName: string;
+  severity: "overlap" | "sameDay";
+  shoot: { id: string; brandName: string; startTime: string | null; endTime: string | null };
+};
+
+export type ConflictReport = {
+  dateShoots: { id: string; brandName: string; startTime: string | null; shootType: ShootType }[];
+  resourceConflicts: ResourceConflict[];
+};

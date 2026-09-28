@@ -16,7 +16,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <Logo className="text-lg" />
           <p className="mt-2 text-sm text-muted">Shoot planning for The Lightscape Studio</p>
         </div>
-        <div className="rounded-2xl border border-line bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
           <LoginForm next={safeNext} />
         </div>
       </div>

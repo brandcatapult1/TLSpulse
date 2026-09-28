@@ -13,7 +13,7 @@ export default async function ChangePasswordPage() {
         <div className="mb-8 text-center">
           <Logo className="text-lg" />
         </div>
-        <div className="rounded-2xl border border-line bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
           <h1 className="text-base font-semibold">
             {user.mustChangePw ? `Welcome, ${user.name}. Set your own password.` : "Change password"}
           </h1>
