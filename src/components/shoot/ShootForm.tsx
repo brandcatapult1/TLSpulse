@@ -6,7 +6,8 @@ import { api } from "@/lib/api";
 import type { ConflictReport, ShootDTO, ShootStatus, ShootType } from "@/lib/types";
 import { STATUS_META, TYPE_META } from "@/lib/ui-meta";
 import { Drawer } from "../Overlay";
-import { Button, FormError, Input, Label, Select, Textarea } from "../ui";
+import { RichTextEditor } from "../RichTextEditor";
+import { Button, FormError, Input, Label, Select } from "../ui";
 import { BrandCombobox } from "./BrandCombobox";
 import { BookedSlots, DateConflictNote, ResourceConflictNotes } from "./ConflictNotes";
 import { ResourcePicker } from "./ResourcePicker";
@@ -279,7 +280,7 @@ export function ShootForm({
         {isEdit && (
           <div>
             <Label htmlFor="status">Status</Label>
-            <Select id="status" value={f.status} onChange={(e) => set("status", e.target.value as ShootStatus)}>
+            <Select id="status" value={f.status} disabled={target.shoot.status === "CANCELLED"} onChange={(e) => set("status", e.target.value as ShootStatus)}>
               {(Object.keys(STATUS_META) as ShootStatus[]).map((s) => (
                 <option key={s} value={s}>
                   {STATUS_META[s].label}
@@ -296,7 +297,7 @@ export function ShootForm({
           <Label htmlFor="notes">
             Notes <span className="font-normal text-muted">(internal only)</span>
           </Label>
-          <Textarea id="notes" value={f.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Brief, references, anything the crew should know" />
+          <RichTextEditor id="notes" value={f.notes} onChange={(html) => set("notes", html)} placeholder="Brief, references, anything the crew should know" />
         </div>
 
         <FormError message={error} />

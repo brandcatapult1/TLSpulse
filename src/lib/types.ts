@@ -20,7 +20,7 @@ export type ShootDTO = {
   resources: AssignedResource[];
 };
 
-export type BrandDTO = { id: string; name: string; companyGroup: string | null; status: ActiveState; createdAt: string; shootsThisMonth?: number };
+export type BrandDTO = { id: string; name: string; companyGroup: string | null; status: ActiveState; createdAt: string };
 export type TeamDTO = { id: string; name: string; type: Engagement; status: ActiveState; memberCount?: number };
 export type ResourceDTO = {
   id: string;

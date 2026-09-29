@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { ChevronDown, Pencil, RotateCcw, Trash2, XCircle } from "lucide-react";
+import { ChevronDown, Pencil, Trash2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { ShootDTO } from "@/lib/types";
@@ -57,12 +57,13 @@ export function ShootDrawer({
   const current = detail?.shoot ?? shoot;
   const cancelled = current.status === "CANCELLED";
 
-  async function setStatus(status: "CANCELLED" | "PLANNED") {
+  // Cancelling is final; there is no restore.
+  async function cancelShoot() {
     setBusy(true);
     try {
-      const { shoot: s } = await api<{ shoot: ShootDTO }>(`/api/shoots/${current.id}`, { method: "PATCH", body: { status } });
+      const { shoot: s } = await api<{ shoot: ShootDTO }>(`/api/shoots/${current.id}`, { method: "PATCH", body: { status: "CANCELLED" } });
       onChanged(s);
-      toast(status === "CANCELLED" ? `${s.brandName} shoot cancelled` : `${s.brandName} shoot restored`);
+      toast(`${s.brandName} shoot cancelled`);
       setConfirm(null);
     } catch (e) {
       toast((e as Error).message, "error");
@@ -100,11 +101,7 @@ export function ShootDrawer({
                 </Button>
               )}
               <div className="ml-auto flex gap-2">
-                {cancelled ? (
-                  <Button variant="outline" onClick={() => setStatus("PLANNED")} disabled={busy}>
-                    <RotateCcw size={15} /> Restore
-                  </Button>
-                ) : (
+                {!cancelled && (
                   <Button variant="outline" onClick={() => setConfirm("cancel")}>
                     <XCircle size={15} /> Cancel shoot
                   </Button>
@@ -158,13 +155,13 @@ export function ShootDrawer({
             <Button variant="ghost" onClick={() => setConfirm(null)}>
               Keep it
             </Button>
-            <Button variant="danger" onClick={() => setStatus("CANCELLED")} disabled={busy}>
+            <Button variant="danger" onClick={cancelShoot} disabled={busy}>
               Cancel shoot
             </Button>
           </>
         }
       >
-        <p className="text-muted">It stays in history and reports as Cancelled, and disappears from the public calendar. You can restore it later.</p>
+        <p className="text-muted">It stays in history and reports as Cancelled and disappears from the public calendar. This can’t be undone.</p>
       </Dialog>
 
       <Dialog

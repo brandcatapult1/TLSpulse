@@ -48,6 +48,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const before = await getShoot(id);
   if (!before) return NextResponse.json({ error: "Shoot not found" }, { status: 404 });
   const prev = toShootDTO(before);
+  // Cancelling is final: a cancelled shoot can't go back to Planned/Rescheduled.
+  if (prev.status === "CANCELLED" && patch.status && patch.status !== "CANCELLED") {
+    return NextResponse.json({ error: "A cancelled shoot can't be restored. Create a new shoot instead." }, { status: 400 });
+  }
 
   // Resulting times must still be ordered even when only one side is patched.
   const nextStart = patch.startTime !== undefined ? patch.startTime : prev.startTime;

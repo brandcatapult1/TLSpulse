@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isYmd } from "./dates";
+import { sanitizeNotes } from "./rich-text-sanitize";
 
 const time = z
   .string()
@@ -23,7 +24,12 @@ const shootFields = {
   startTime: time,
   endTime: time,
   location: optText(200),
-  notes: optText(4000),
+  // Rich text (HTML) from the notes editor, cleaned before storage.
+  notes: z
+    .string()
+    .max(20000)
+    .nullish()
+    .transform((v) => sanitizeNotes(v)),
   resourceIds: z.array(z.string().min(1)).max(50),
   status: z.enum(["PLANNED", "RESCHEDULED", "CANCELLED"]),
 };

@@ -22,7 +22,6 @@ const ADMIN = [
   "shoot.delete",
   "brand.create", // Users pick existing brands only (decided 28 Sep 2026)
   "brand.deactivate",
-  "brand.delete",
   "resource.write",
   "team.write",
   "user.manage",

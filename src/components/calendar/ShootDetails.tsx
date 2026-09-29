@@ -3,6 +3,7 @@ import { AlertTriangle, CalendarDays, Clock, MapPin } from "lucide-react";
 import { fmtLong, fmtTimeRange } from "@/lib/dates";
 import type { ShootDTO } from "@/lib/types";
 import { STATUS_META, TYPE_META } from "@/lib/ui-meta";
+import { RichText } from "../RichText";
 import { Pill } from "../ui";
 
 /** Shoot detail body shared by the internal drawer and the public calendar (PRD §11, §34). */
@@ -51,7 +52,7 @@ export function ShootDetails({ shoot, publicView }: { shoot: ShootDTO; publicVie
       {!publicView && shoot.notes && (
         <section>
           <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">Internal notes</h3>
-          <p className="rounded-xl bg-soft px-3 py-2.5 text-sm whitespace-pre-wrap">{shoot.notes}</p>
+          <RichText html={shoot.notes} className="rounded-xl bg-soft px-3 py-2.5 text-sm" />
         </section>
       )}
     </div>

@@ -1,20 +1,22 @@
 "use client";
 
 import { format } from "date-fns";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import type { BrandDTO } from "@/lib/types";
-import { Dialog, Drawer } from "../Overlay";
+import { Drawer } from "../Overlay";
 import { useToast } from "../Toast";
-import { Button, EmptyState, FormError, Input, Label, PageHeader, Skeleton } from "../ui";
+import { Button, EmptyState, FormError, Input, Label, PageHeader, Select, Skeleton } from "../ui";
 import { StatusDot, Table, Td, Th } from "./Table";
 
 export function BrandsPage({ isAdmin }: { isAdmin: boolean }) {
   const toast = useToast();
   const [brands, setBrands] = useState<BrandDTO[] | null>(null);
   const [q, setQ] = useState("");
-  const [showInactive, setShowInactive] = useState(false);
+  const [status, setStatus] = useState<"ACTIVE" | "INACTIVE" | "ALL">("ACTIVE");
+  const [group, setGroup] = useState(""); // "" = all, "__none__" = no group
+  const [sort, setSort] = useState<"name" | "name-desc" | "newest" | "oldest">("name");
   const [editing, setEditing] = useState<BrandDTO | "new" | null>(null);
 
   const load = useCallback(() => api<{ brands: BrandDTO[] }>("/api/brands").then((r) => setBrands(r.brands)), []);
@@ -24,9 +26,19 @@ export function BrandsPage({ isAdmin }: { isAdmin: boolean }) {
 
   const list = useMemo(() => {
     const n = q.trim().toLowerCase();
-    return (brands ?? []).filter((b) => (showInactive || b.status === "ACTIVE") && (!n || b.name.toLowerCase().includes(n) || b.companyGroup?.toLowerCase().includes(n)));
-  }, [brands, q, showInactive]);
+    const rows = (brands ?? []).filter(
+      (b) =>
+        (status === "ALL" || b.status === status) &&
+        (!group || (group === "__none__" ? !b.companyGroup : b.companyGroup === group)) &&
+        (!n || b.name.toLowerCase().includes(n) || b.companyGroup?.toLowerCase().includes(n)),
+    );
+    const byName = (a: BrandDTO, b: BrandDTO) => a.name.localeCompare(b.name);
+    const byDate = (a: BrandDTO, b: BrandDTO) => a.createdAt.localeCompare(b.createdAt);
+    return rows.sort(sort === "name" ? byName : sort === "name-desc" ? (a, b) => byName(b, a) : sort === "oldest" ? byDate : (a, b) => byDate(b, a));
+  }, [brands, q, status, group, sort]);
   const inactiveCount = (brands ?? []).filter((b) => b.status === "INACTIVE").length;
+  const groups = useMemo(() => [...new Set((brands ?? []).map((b) => b.companyGroup).filter(Boolean) as string[])].sort(), [brands]);
+  const filtered = q.trim() !== "" || status !== "ACTIVE" || group !== "" || sort !== "name";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
@@ -41,23 +53,52 @@ export function BrandsPage({ isAdmin }: { isAdmin: boolean }) {
           )
         }
       />
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative w-full max-w-xs">
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+        <div className="relative col-span-2 sm:w-64">
           <Search size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search brands" className="pl-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search brand or group" className="pl-9" />
         </div>
-        {inactiveCount > 0 && (
-          <label className="flex items-center gap-2 text-sm text-muted">
-            <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} /> Show inactive ({inactiveCount})
-          </label>
+        <Select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-label="Status" className="sm:w-40">
+          <option value="ACTIVE">Active</option>
+          <option value="INACTIVE">Inactive{inactiveCount ? ` (${inactiveCount})` : ""}</option>
+          <option value="ALL">All statuses</option>
+        </Select>
+        <Select value={group} onChange={(e) => setGroup(e.target.value)} aria-label="Company / Group" className="sm:w-48">
+          <option value="">All companies / groups</option>
+          {groups.map((g) => (
+            <option key={g} value={g}>
+              {g}
+            </option>
+          ))}
+          <option value="__none__">No group</option>
+        </Select>
+        <Select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label="Sort" className="sm:w-40">
+          <option value="name">Name A–Z</option>
+          <option value="name-desc">Name Z–A</option>
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </Select>
+        {filtered && (
+          <button
+            onClick={() => {
+              setQ("");
+              setStatus("ACTIVE");
+              setGroup("");
+              setSort("name");
+            }}
+            className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink"
+          >
+            <X size={14} /> Clear
+          </button>
         )}
+        {brands && <span className="text-xs text-muted sm:ml-auto">{list.length} shown</span>}
       </div>
 
       {!brands ? (
         <Skeleton className="h-64" />
       ) : list.length === 0 ? (
         <EmptyState
-          title={q ? `No brands match “${q}”` : "No brands yet"}
+          title={filtered ? "No brands match these filters" : "No brands yet"}
           hint={isAdmin ? "Admins can also create brands straight from the New Shoot form." : "Ask an admin to add brands."}
         />
       ) : (
@@ -66,7 +107,6 @@ export function BrandsPage({ isAdmin }: { isAdmin: boolean }) {
             <>
               <Th>Brand</Th>
               <Th className="hidden sm:table-cell">Company / Group</Th>
-              <Th className="text-right">Shoots this month</Th>
               <Th className="hidden md:table-cell">Status</Th>
               <Th className="hidden md:table-cell">Created</Th>
             </>
@@ -79,7 +119,6 @@ export function BrandsPage({ isAdmin }: { isAdmin: boolean }) {
                 <span className="block text-xs font-normal text-muted sm:hidden">{b.companyGroup}</span>
               </Td>
               <Td className="hidden text-muted sm:table-cell">{b.companyGroup ?? "—"}</Td>
-              <Td className="tabular text-right">{b.shootsThisMonth ?? 0}</Td>
               <Td className="hidden md:table-cell">
                 <StatusDot active={b.status === "ACTIVE"} />
               </Td>
@@ -108,7 +147,6 @@ function BrandDrawer({ brand, isAdmin, onClose, onSaved }: { brand: BrandDTO | "
   const [group, setGroup] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const isNew = brand === "new";
   const existing = brand && brand !== "new" ? brand : null;
 
@@ -159,9 +197,6 @@ function BrandDrawer({ brand, isAdmin, onClose, onSaved }: { brand: BrandDTO | "
                 >
                   {existing.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
                 </Button>
-                <Button variant="ghost" size="sm" className="text-danger" onClick={() => setConfirmDelete(true)}>
-                  Delete
-                </Button>
               </>
             )}
             <div className="ml-auto flex gap-2">
@@ -192,36 +227,12 @@ function BrandDrawer({ brand, isAdmin, onClose, onSaved }: { brand: BrandDTO | "
             </Label>
             <Input id="bgroup" value={group} onChange={(e) => setGroup(e.target.value)} />
           </div>
-          {existing && !isAdmin && <p className="text-xs text-muted">Only an admin can deactivate or delete a brand.</p>}
+          {existing && !isAdmin && <p className="text-xs text-muted">Only an admin can deactivate a brand.</p>}
           {existing?.status === "INACTIVE" && <p className="text-xs text-muted">Inactive brands are hidden from the New Shoot form but stay on past shoots and in reports.</p>}
           <FormError message={error} />
           <button type="submit" hidden />
         </form>
       </Drawer>
-      <Dialog
-        open={confirmDelete}
-        onClose={() => setConfirmDelete(false)}
-        title={`Delete ${existing?.name}?`}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-              Keep
-            </Button>
-            <Button
-              variant="danger"
-              disabled={busy}
-              onClick={() => {
-                setConfirmDelete(false);
-                run(() => api(`/api/brands/${existing!.id}`, { method: "DELETE" }), `${existing!.name} deleted`);
-              }}
-            >
-              Delete
-            </Button>
-          </>
-        }
-      >
-        <p className="text-muted">Only brands with no shoots can be deleted. Brands with history should be deactivated instead.</p>
-      </Dialog>
     </>
   );
 }

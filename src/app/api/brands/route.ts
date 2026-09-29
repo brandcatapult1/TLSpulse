@@ -3,7 +3,6 @@ import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { bad, readJson, uniqueError } from "@/lib/http";
-import { currentMonthCounts } from "@/lib/month-counts";
 import { BrandInput, firstError } from "@/lib/validators";
 
 export async function GET(req: NextRequest) {
@@ -11,19 +10,14 @@ export async function GET(req: NextRequest) {
   if (g.error) return g.error;
   const q = req.nextUrl.searchParams.get("q")?.trim();
   const activeOnly = req.nextUrl.searchParams.get("active") === "1";
-  const [brands, counts] = await Promise.all([
-    db.brand.findMany({
-      where: {
-        ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { companyGroup: { contains: q, mode: "insensitive" } }] } : {}),
-        ...(activeOnly ? { status: "ACTIVE" } : {}),
-      },
-      orderBy: { name: "asc" },
-    }),
-    currentMonthCounts(),
-  ]);
-  return NextResponse.json({
-    brands: brands.map((b) => ({ ...b, createdAt: b.createdAt.toISOString(), shootsThisMonth: counts.brand.get(b.id) ?? 0 })),
+  const brands = await db.brand.findMany({
+    where: {
+      ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { companyGroup: { contains: q, mode: "insensitive" } }] } : {}),
+      ...(activeOnly ? { status: "ACTIVE" } : {}),
+    },
+    orderBy: { name: "asc" },
   });
+  return NextResponse.json({ brands: brands.map((b) => ({ ...b, createdAt: b.createdAt.toISOString() })) });
 }
 
 export async function POST(req: NextRequest) {

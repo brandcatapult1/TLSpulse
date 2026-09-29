@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { writeAudit } from "@/lib/audit";
-import { requireAdmin, requireUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { bad, readJson, uniqueError } from "@/lib/http";
 import { can } from "@/lib/permissions";
@@ -27,16 +27,4 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   } catch (e) {
     return uniqueError(e, "A brand with that name");
   }
-}
-
-export async function DELETE(_req: NextRequest, { params }: Ctx) {
-  const g = await requireAdmin();
-  if (g.error) return g.error;
-  const { id } = await params;
-  const brand = await db.brand.findUnique({ where: { id }, include: { _count: { select: { shoots: true } } } });
-  if (!brand) return bad("Brand not found", 404);
-  if (brand._count.shoots > 0) return bad(`${brand.name} has ${brand._count.shoots} shoot(s). Deactivate it instead.`, 409);
-  await db.brand.delete({ where: { id } });
-  await writeAudit({ actorId: g.user.id, action: "BRAND_DELETED", entity: "brand", entityId: id, summary: `${g.user.name} deleted brand ${brand.name}` });
-  return NextResponse.json({ ok: true });
 }
