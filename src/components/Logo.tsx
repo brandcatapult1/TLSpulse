@@ -5,11 +5,14 @@ import Image from "next/image";
 // "Pulse" product label. `iconOnly` shows just the aperture mark (collapsed sidebar).
 const LOGO_RATIO = 1905 / 761;
 
-export function Logo({ className, iconOnly = false, size = "md" }: { className?: string; iconOnly?: boolean; size?: "sm" | "md" | "lg" }) {
-  const h = size === "lg" ? 64 : size === "sm" ? 32 : 36;
+type Size = "sm" | "md" | "sidebar" | "lg";
+const HEIGHT: Record<Size, number> = { sm: 32, md: 36, sidebar: 43, lg: 64 }; // sidebar = 20% larger than md
+
+export function Logo({ className, iconOnly = false, size = "md" }: { className?: string; iconOnly?: boolean; size?: Size }) {
+  const h = HEIGHT[size];
   if (iconOnly) {
     return (
-      <span className={clsx("relative inline-block h-8 w-8", className)} aria-label="TLS Pulse">
+      <span className={clsx("relative inline-block", size === "sidebar" ? "h-[38px] w-[38px]" : "h-8 w-8", className)} aria-label="TLS Pulse">
         <Image src="/brand/tls-mark.png" alt="" fill sizes="32px" className="object-contain dark:hidden" priority />
         <Image src="/brand/tls-mark-white.png" alt="" fill sizes="32px" className="hidden object-contain dark:block" priority />
       </span>

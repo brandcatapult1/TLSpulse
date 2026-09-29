@@ -171,9 +171,9 @@ export function AppShell({ name, role, children }: { name: string; role: Role; c
             compact ? "w-[64px]" : "w-[228px]",
           )}
         >
-          <div className={clsx("mb-4 flex h-9 items-center", compact ? "justify-center" : "justify-between pl-2")}>
+          <div className={clsx("mb-4 flex h-12 items-center", compact ? "justify-center" : "justify-between pl-1")}>
             <Link href="/" aria-label="TLS Pulse home">
-              {compact ? <Logo iconOnly /> : <Logo />}
+              {compact ? <Logo iconOnly size="sidebar" /> : <Logo size="sidebar" />}
             </Link>
             {!compact && (
               <button onClick={toggleCollapsed} aria-label="Collapse sidebar" className="grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-soft hover:text-ink">
@@ -208,8 +208,8 @@ export function AppShell({ name, role, children }: { name: string; role: Role; c
           <div className="fixed inset-0 z-50 md:hidden">
             <div className="anim-fade absolute inset-0 bg-black/30" onClick={() => setMobileOpen(false)} />
             <aside className="anim-rise absolute inset-y-0 left-0 flex w-[78%] max-w-[300px] flex-col bg-surface p-3 shadow-2xl">
-              <div className="mb-4 flex h-9 items-center justify-between pl-2">
-                <Logo />
+              <div className="mb-4 flex h-12 items-center justify-between pl-1">
+                <Logo size="sidebar" />
                 <button aria-label="Close menu" onClick={() => setMobileOpen(false)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-soft">
                   <X size={18} />
                 </button>
