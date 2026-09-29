@@ -2,6 +2,12 @@
 // UI may hide controls using this, but every API route must also check it.
 import type { Role } from "./session";
 
+/**
+ * Crew logins are switched OFF for now (decided 29 Sep 2026): only Admin and User can log in.
+ * The crew role, scoping and UI stay in the code; flip this to true to turn them back on.
+ */
+export const CREW_LOGIN_ENABLED = false;
+
 // Crew (a resource's own login) is view-only, and every query is scoped to their shoots.
 const CREW = ["calendar.view", "shoot.view", "report.view"] as const;
 

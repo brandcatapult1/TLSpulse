@@ -6,6 +6,7 @@ import { writeAudit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { bad, readJson } from "@/lib/http";
+import { CREW_LOGIN_ENABLED } from "@/lib/permissions";
 import { tempPassword } from "@/lib/passwords";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -15,6 +16,7 @@ const loginSelect = { id: true, email: true, status: true, mustChangePw: true, l
 export async function POST(req: NextRequest, { params }: Ctx) {
   const g = await requireAdmin();
   if (g.error) return g.error;
+  if (!CREW_LOGIN_ENABLED) return bad("Crew logins are switched off for now", 403);
   const { id } = await params;
   const parsed = z.object({ email: z.string().trim().toLowerCase().email("Enter a valid email").optional() }).safeParse(await readJson(req));
   if (!parsed.success) return bad(parsed.error.issues[0].message);

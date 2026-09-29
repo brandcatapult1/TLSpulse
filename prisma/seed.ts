@@ -112,7 +112,7 @@ async function main() {
     "seed-credentials.local.txt",
     `TLS Pulse — local logins (created ${new Date().toLocaleString("en-IN")})\n` +
       `Re-running the seed replaces these. You'll be asked to set your own password on first login.\n\n` +
-      `Admin  vaibhav@tls.local  ${adminPw}\nUser   dhruv@tls.local    ${userPw}\nCrew   rohit@tls.local    ${crewPw}   (Rohit — sees only his own shoots)\n\nPublic calendar: ${appUrl}/bookings\n`,
+      `Admin  vaibhav@tls.local  ${adminPw}\nUser   dhruv@tls.local    ${userPw}\nCrew   rohit@tls.local    ${crewPw}   (Rohit — crew logins are switched off for now)\n\nPublic calendar: ${appUrl}/bookings\n`,
   );
   console.log(`Seeded ${rows.length} shoots for ${ym}. Credentials → seed-credentials.local.txt`);
 }

@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 import { db } from "./db";
-import { can, type Action } from "./permissions";
+import { can, CREW_LOGIN_ENABLED, type Action } from "./permissions";
 import { SESSION_COOKIE, verifySession } from "./session";
 
 export type CurrentUser = {
@@ -27,6 +27,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     select: { id: true, name: true, email: true, role: true, mustChangePw: true, status: true, resourceId: true },
   });
   if (!user || user.status !== "ACTIVE") return null;
+  if (user.role === "CREW" && !CREW_LOGIN_ENABLED) return null; // ends any open crew session
   return { id: user.id, name: user.name, email: user.email, role: user.role, mustChangePw: user.mustChangePw, resourceId: user.resourceId };
 }
 

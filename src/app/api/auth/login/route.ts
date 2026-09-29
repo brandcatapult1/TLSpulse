@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { CREW_LOGIN_ENABLED } from "@/lib/permissions";
 import { clearAttempts, tooManyAttempts } from "@/lib/rate-limit";
 import { SESSION_COOKIE, sessionCookieOptions, signSession } from "@/lib/session";
 
@@ -21,6 +22,9 @@ export async function POST(req: NextRequest) {
   const user = await db.user.findUnique({ where: { email } });
   const ok = user && user.status === "ACTIVE" && (await bcrypt.compare(password, user.passwordHash));
   if (!ok) return NextResponse.json({ error: "Wrong email or password" }, { status: 401 });
+  if (user.role === "CREW" && !CREW_LOGIN_ENABLED) {
+    return NextResponse.json({ error: "Crew logins aren't available yet. Please check with an admin." }, { status: 403 });
+  }
 
   clearAttempts(key);
   await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });

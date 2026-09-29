@@ -5,6 +5,7 @@ import { BarChart3, Copy, KeyRound, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { CREW_LOGIN_ENABLED } from "@/lib/permissions";
 import type { Engagement, ResourceDTO, TeamDTO } from "@/lib/types";
 import { Dialog, Drawer } from "../Overlay";
 import { useToast } from "../Toast";
@@ -126,7 +127,7 @@ export function ResourcesPage({ isAdmin }: { isAdmin: boolean }) {
                 <tr key={r.id} onClick={() => isAdmin && setEditRes(r)} className={clsx(isAdmin && "cursor-pointer", "hover:bg-soft/60")}>
                   <Td className="font-medium">
                     {r.name}
-                    {r.login && (
+                    {CREW_LOGIN_ENABLED && r.login && (
                       <KeyRound
                         size={12}
                         className={clsx("ml-1.5 inline", r.login.status === "ACTIVE" ? "text-ok" : "text-muted")}
@@ -346,7 +347,7 @@ function ResourceDrawer({ resource, teams, onClose, onSaved }: { resource: Resou
           <FormError message={error} />
           <button type="submit" hidden />
         </form>
-        {existing && <CrewLogin resource={existing} onChanged={(m) => onSaved(m)} />}
+        {existing && CREW_LOGIN_ENABLED && <CrewLogin resource={existing} onChanged={(m) => onSaved(m)} />}
       </Drawer>
       <Dialog
         open={confirmDelete}
