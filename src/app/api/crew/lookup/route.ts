@@ -3,14 +3,19 @@ import { z } from "zod";
 import { normalizeEmail, normalizePhone } from "@/lib/contact";
 import { CREW_VIEW_COOKIE, crewViewCookie, signCrewView } from "@/lib/crew-view";
 import { db } from "@/lib/db";
-import { tooManyAttempts } from "@/lib/rate-limit";
+import { clearAttempts, isBlocked, recordFailure } from "@/lib/rate-limit";
+
+// Only failed lookups count (20 per 10 minutes per address); a successful one resets it.
+const MAX_FAILURES = 20;
+const WINDOW_MS = 10 * 60 * 1000;
 
 const NOT_FOUND = "We couldn't find a crew member with that mobile number or email. Check it, or ask the TLS team to add it to your profile.";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  const key = `crew:${ip}`;
   // Slows down anyone trying to guess numbers.
-  if (tooManyAttempts(`crew:${ip}`, 10, 10 * 60 * 1000)) {
+  if (isBlocked(key, MAX_FAILURES)) {
     return NextResponse.json({ error: "Too many tries. Please wait a few minutes." }, { status: 429 });
   }
   const parsed = z.object({ contact: z.string().trim().min(3).max(120) }).safeParse(await req.json().catch(() => null));
@@ -19,10 +24,17 @@ export async function POST(req: NextRequest) {
   const raw = parsed.data.contact;
   const email = raw.includes("@") ? normalizeEmail(raw) : null;
   const phone = email ? null : normalizePhone(raw);
-  if (!email && !phone) return NextResponse.json({ error: "Enter a valid mobile number or email" }, { status: 400 });
+  if (!email && !phone) {
+    recordFailure(key, WINDOW_MS);
+    return NextResponse.json({ error: "Enter a valid mobile number or email" }, { status: 400 });
+  }
 
   const resource = await db.resource.findFirst({ where: { status: "ACTIVE", ...(email ? { email } : { phone: phone! }) }, select: { id: true, name: true } });
-  if (!resource) return NextResponse.json({ error: NOT_FOUND }, { status: 404 });
+  if (!resource) {
+    recordFailure(key, WINDOW_MS);
+    return NextResponse.json({ error: NOT_FOUND }, { status: 404 });
+  }
+  clearAttempts(key);
 
   const res = NextResponse.json({ ok: true, name: resource.name });
   res.cookies.set(CREW_VIEW_COOKIE, await signCrewView(resource.id), crewViewCookie);
