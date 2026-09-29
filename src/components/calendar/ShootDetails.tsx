@@ -1,6 +1,7 @@
 import clsx from "clsx";
-import { AlertTriangle, CalendarDays, Clock, MapPin } from "lucide-react";
+import { AlertTriangle, CalendarDays, Clock, ExternalLink, MapPin } from "lucide-react";
 import { fmtLong, fmtTimeRange } from "@/lib/dates";
+import { mapsUrl } from "@/lib/maps-url";
 import type { ShootDTO } from "@/lib/types";
 import { STATUS_META, TYPE_META } from "@/lib/ui-meta";
 import { RichText } from "../RichText";
@@ -22,7 +23,16 @@ export function ShootDetails({ shoot, publicView }: { shoot: ShootDTO; publicVie
       <dl className="space-y-2.5 text-sm">
         <Row icon={<CalendarDays size={16} />}>{fmtLong(shoot.date)}</Row>
         {shoot.startTime && <Row icon={<Clock size={16} />}>{fmtTimeRange(shoot.startTime, shoot.endTime)}</Row>}
-        {shoot.location && <Row icon={<MapPin size={16} />}>{shoot.location}</Row>}
+        {shoot.location && (
+          <Row icon={<MapPin size={16} />}>
+            {shoot.location}
+            {mapsUrl(shoot) && (
+              <a href={mapsUrl(shoot)!} target="_blank" rel="noreferrer" className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-social hover:underline">
+                <ExternalLink size={12} /> {shoot.locationLat != null ? "Open pin in Google Maps" : "Google Maps"}
+              </a>
+            )}
+          </Row>
+        )}
       </dl>
 
       <section>

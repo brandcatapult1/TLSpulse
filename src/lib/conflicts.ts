@@ -14,6 +14,7 @@ export type OtherShoot = {
   brandId: string;
   brandName: string;
   location: string | null;
+  locationPlaceId?: string | null;
   startTime: string | null;
   endTime: string | null;
   resources: { id: string; name: string }[];
@@ -33,6 +34,12 @@ export function timesOverlap(aStart: string | null, aEnd: string | null, bStart:
   return aStart < endOf(bStart, bEnd) && bStart < endOf(aStart, aEnd);
 }
 
+/** Same place: identical Google place ids when both are pinned, otherwise matching text. */
+export function samePlace(a: { location?: string | null; locationPlaceId?: string | null }, b: { location?: string | null; locationPlaceId?: string | null }) {
+  if (a.locationPlaceId && b.locationPlaceId) return a.locationPlaceId === b.locationPlaceId;
+  return sameLocation(a.location, b.location);
+}
+
 /** "Aerocity, New Delhi" == "aerocity new delhi". Empty locations never match. */
 export function sameLocation(a: string | null | undefined, b: string | null | undefined) {
   const norm = (s: string | null | undefined) => (s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -40,7 +47,15 @@ export function sameLocation(a: string | null | undefined, b: string | null | un
 }
 
 export function findResourceConflicts(
-  target: { startTime: string | null; endTime: string | null; resourceIds: string[]; brandId?: string | null; location?: string | null; shootType?: ShootType | null },
+  target: {
+    startTime: string | null;
+    endTime: string | null;
+    resourceIds: string[];
+    brandId?: string | null;
+    location?: string | null;
+    locationPlaceId?: string | null;
+    shootType?: ShootType | null;
+  },
   others: OtherShoot[],
 ): ResourceConflict[] {
   const wanted = new Set(target.resourceIds);
@@ -51,8 +66,8 @@ export function findResourceConflicts(
       const overlap = timesOverlap(target.startTime, target.endTime, s.startTime, s.endTime);
       const sameBrand = !!target.brandId && target.brandId === s.brandId;
       const otherType = !!target.shootType && target.shootType !== s.shootType;
-      const samePlace = sameLocation(target.location, s.location);
-      const sameVisit = sameBrand && otherType && samePlace;
+      const atSamePlace = samePlace(target, s);
+      const sameVisit = sameBrand && otherType && atSamePlace;
       const severity: ResourceConflict["severity"] =
         !target.startTime || !s.startTime ? "untimed" : !overlap ? "sameDay" : sameVisit ? "sameVisit" : "clash";
       const reason: ResourceConflict["reason"] =
@@ -70,7 +85,7 @@ export function findResourceConflicts(
         resourceName: r.name,
         severity,
         ...(reason ? { reason } : {}),
-        shoot: { id: s.id, brandName: s.brandName, shootType: s.shootType, location: s.location, startTime: s.startTime, endTime: s.endTime },
+        shoot: { id: s.id, brandName: s.brandName, shootType: s.shootType, location: s.location, locationPlaceId: s.locationPlaceId ?? null, startTime: s.startTime, endTime: s.endTime },
       });
     }
   }

@@ -86,6 +86,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           brandId: patch.brandId ?? prev.brandId,
           shootType: patch.shootType ?? prev.shootType,
           location: patch.location !== undefined ? patch.location : prev.location,
+          locationPlaceId: patch.locationPlaceId !== undefined ? patch.locationPlaceId : prev.locationPlaceId,
           startTime: nextStart,
           endTime: nextEnd,
           resourceIds: nextResourceIds,
@@ -106,6 +107,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
                 brandId: prev.brandId,
                 shootType: prev.shootType,
                 location: prev.location,
+                locationPlaceId: prev.locationPlaceId,
                 startTime: prev.startTime,
                 endTime: prev.endTime,
                 resourceIds: prev.resources.map((r) => r.id),
@@ -135,6 +137,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         startTime: patch.startTime,
         endTime: patch.endTime,
         location: patch.location,
+        locationLat: patch.locationLat,
+        locationLng: patch.locationLng,
+        locationPlaceId: patch.locationPlaceId,
         notes: patch.notes,
         status,
         updatedById: g.user.id,
@@ -162,7 +167,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (brandName !== prev.brandName) changed.push(`brand ${prev.brandName} → ${brandName}`);
   if (dto.shootType !== prev.shootType) changed.push(`type → ${TYPE_WORD[dto.shootType]}`);
   if (dto.startTime !== prev.startTime || dto.endTime !== prev.endTime) changed.push(`time → ${fmtTimeRange(dto.startTime, dto.endTime) || "no time"}`);
-  if (dto.location !== prev.location) changed.push("location");
+  if (dto.location !== prev.location || dto.locationPlaceId !== prev.locationPlaceId || dto.locationLat !== prev.locationLat) changed.push("location");
   if (dto.notes !== prev.notes) changed.push("notes");
   if (changed.length) lines.push({ action: "SHOOT_UPDATED", summary: `${who} updated ${label} — ${changed.join(", ")}` });
   for (const l of lines) {

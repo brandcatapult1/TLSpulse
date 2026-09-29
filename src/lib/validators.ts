@@ -17,7 +17,16 @@ const optText = (max: number) =>
     .nullish()
     .transform((v) => v || null);
 
+const coord = (min: number, max: number) => z.number().min(min).max(max).nullish().transform((v) => v ?? null);
+
 const shootFields = {
+  locationLat: coord(-90, 90),
+  locationLng: coord(-180, 180),
+  locationPlaceId: z
+    .string()
+    .max(300)
+    .nullish()
+    .transform((v) => v || null),
   brandId: z.string().min(1, "Pick a brand"),
   shootType: z.enum(["SOCIAL_MEDIA", "REAL_TIME_VISIT"]),
   date: z.string().refine(isYmd, "Pick a date"),
@@ -49,6 +58,7 @@ export const ConflictCheck = z.object({
   date: z.string().refine(isYmd),
   brandId: z.string().nullish(),
   location: z.string().max(200).nullish(),
+  locationPlaceId: z.string().max(300).nullish(),
   shootType: z.enum(["SOCIAL_MEDIA", "REAL_TIME_VISIT"]).nullish(),
   startTime: time,
   endTime: time,

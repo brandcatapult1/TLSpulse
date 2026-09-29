@@ -15,6 +15,10 @@ export type ShootDTO = {
   startTime: string | null; // HH:MM, 24h, IST
   endTime: string | null;
   location: string | null;
+  /** Optional Google Maps pin. */
+  locationLat?: number | null;
+  locationLng?: number | null;
+  locationPlaceId?: string | null;
   status: ShootStatus;
   notes?: string | null; // never present on the public calendar
   resources: AssignedResource[];
@@ -43,7 +47,7 @@ export type ResourceConflict = {
   severity: "clash" | "untimed" | "sameDay" | "sameVisit";
   /** Why a clash isn't covered by the same-brand-and-location exception. */
   reason?: "differentBrand" | "sameType" | "differentLocation" | "noLocation";
-  shoot: { id: string; brandName: string; shootType: ShootType; location: string | null; startTime: string | null; endTime: string | null };
+  shoot: { id: string; brandName: string; shootType: ShootType; location: string | null; locationPlaceId?: string | null; startTime: string | null; endTime: string | null };
 };
 
 export type ConflictReport = {

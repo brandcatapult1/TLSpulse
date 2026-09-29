@@ -1,13 +1,14 @@
 "use client";
 
 import { format } from "date-fns";
-import { ChevronDown, Pencil, Trash2, XCircle } from "lucide-react";
+import { CalendarClock, ChevronDown, Pencil, Trash2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { ShootDTO } from "@/lib/types";
 import { Dialog, Drawer } from "../Overlay";
 import { useToast } from "../Toast";
 import { Button } from "../ui";
+import { RescheduleDialog } from "../shoot/RescheduleDialog";
 import { ShootDetails } from "./ShootDetails";
 
 type Detail = {
@@ -38,6 +39,7 @@ export function ShootDrawer({
   const [detail, setDetail] = useState<Detail | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [confirm, setConfirm] = useState<"cancel" | "delete" | null>(null);
+  const [rescheduling, setRescheduling] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -94,19 +96,25 @@ export function ShootDrawer({
         title={<span className="text-lg">{current.brandName}</span>}
         footer={
           readOnly ? undefined : (
-            <div className="flex w-full flex-wrap items-center gap-2">
-              {isAdmin && (
-                <Button variant="ghost" size="sm" className="text-danger" onClick={() => setConfirm("delete")}>
-                  <Trash2 size={15} /> Delete
-                </Button>
+            <div className="w-full space-y-2">
+              {/* Status actions: cancel (final) or pick a new date/time */}
+              {!cancelled && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" className="text-danger" onClick={() => setConfirm("cancel")}>
+                    <XCircle size={15} /> Cancel Shoot
+                  </Button>
+                  <Button variant="outline" onClick={() => setRescheduling(true)}>
+                    <CalendarClock size={15} /> Reschedule Shoot
+                  </Button>
+                </div>
               )}
-              <div className="ml-auto flex gap-2">
-                {!cancelled && (
-                  <Button variant="outline" onClick={() => setConfirm("cancel")}>
-                    <XCircle size={15} /> Cancel shoot
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <Button variant="ghost" size="sm" className="text-danger" onClick={() => setConfirm("delete")}>
+                    <Trash2 size={15} /> Delete
                   </Button>
                 )}
-                <Button onClick={() => onEdit(current)}>
+                <Button className="ml-auto" onClick={() => onEdit(current)}>
                   <Pencil size={15} /> Edit
                 </Button>
               </div>
@@ -145,6 +153,18 @@ export function ShootDrawer({
           )}
         </div>
       </Drawer>
+
+      {rescheduling && (
+        <RescheduleDialog
+          shoot={current}
+          mode="save"
+          onClose={() => setRescheduling(false)}
+          onSaved={(s) => {
+            setRescheduling(false);
+            onChanged(s);
+          }}
+        />
+      )}
 
       <Dialog
         open={confirm === "cancel"}

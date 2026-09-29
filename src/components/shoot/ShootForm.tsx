@@ -1,16 +1,19 @@
 "use client";
 
 import clsx from "clsx";
+import { CalendarClock, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { ConflictReport, ShootDTO, ShootStatus, ShootType } from "@/lib/types";
 import { STATUS_META, TYPE_META } from "@/lib/ui-meta";
-import { Drawer } from "../Overlay";
+import { Dialog, Drawer } from "../Overlay";
 import { RichTextEditor } from "../RichTextEditor";
-import { Button, FormError, Input, Label, Select } from "../ui";
+import { Button, FormError, Input, Label, Pill } from "../ui";
 import { BrandCombobox } from "./BrandCombobox";
 import { BookedSlots, DateConflictNote, ResourceConflictNotes } from "./ConflictNotes";
 import { ResourcePicker } from "./ResourcePicker";
+import { LocationPicker } from "./LocationPicker";
+import { RescheduleDialog } from "./RescheduleDialog";
 import { useMasters } from "./useMasters";
 
 export type FormTarget = { mode: "create"; date: string } | { mode: "edit"; shoot: ShootDTO };
@@ -22,13 +25,16 @@ type State = {
   startTime: string;
   endTime: string;
   location: string;
+  locationLat: number | null;
+  locationLng: number | null;
+  locationPlaceId: string | null;
   notes: string;
   resourceIds: string[];
   status: ShootStatus;
 };
 
 function initial(t: FormTarget): State {
-  if (t.mode === "create") return { brandId: "", shootType: "", date: t.date, startTime: "", endTime: "", location: "", notes: "", resourceIds: [], status: "PLANNED" };
+  if (t.mode === "create") return { brandId: "", shootType: "", date: t.date, startTime: "", endTime: "", location: "", locationLat: null, locationLng: null, locationPlaceId: null, notes: "", resourceIds: [], status: "PLANNED" };
   const s = t.shoot;
   return {
     brandId: s.brandId,
@@ -37,6 +43,9 @@ function initial(t: FormTarget): State {
     startTime: s.startTime ?? "",
     endTime: s.endTime ?? "",
     location: s.location ?? "",
+    locationLat: s.locationLat ?? null,
+    locationLng: s.locationLng ?? null,
+    locationPlaceId: s.locationPlaceId ?? null,
     notes: s.notes ?? "",
     resourceIds: s.resources.map((r) => r.id),
     status: s.status,
@@ -65,6 +74,8 @@ export function ShootForm({
   const [needCrewConfirm, setNeedCrewConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [report, setReport] = useState<ConflictReport | null>(null);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -74,6 +85,8 @@ export function ShootForm({
       setMissing(new Set());
       setNeedCrewConfirm(false);
       setReport(null);
+      setRescheduling(false);
+      setConfirmCancel(false);
     }
   }, [target]);
 
@@ -92,6 +105,7 @@ export function ShootForm({
             brandId: f.brandId || null,
             shootType: f.shootType || null,
             location: f.location || null,
+            locationPlaceId: f.locationPlaceId,
             startTime: f.startTime || null,
             endTime: f.endTime || null,
             resourceIds: allIds,
@@ -105,7 +119,7 @@ export function ShootForm({
       ctrl.cancelled = true;
       clearTimeout(t);
     };
-  }, [f?.date, f?.startTime, f?.endTime, f?.brandId, f?.shootType, f?.location, allIds, shootId, open]);
+  }, [f?.date, f?.startTime, f?.endTime, f?.brandId, f?.shootType, f?.location, f?.locationPlaceId, allIds, shootId, open]);
 
   if (!target || !f) return null;
   const clashes = (report?.resourceConflicts ?? []).filter((c) => c.severity === "clash" && f.resourceIds.includes(c.resourceId));
@@ -144,6 +158,9 @@ export function ShootForm({
         startTime: f.startTime || null,
         endTime: f.endTime || null,
         location: f.location,
+        locationLat: f.locationLat,
+        locationLng: f.locationLng,
+        locationPlaceId: f.locationPlaceId,
         notes: f.notes,
         resourceIds: f.resourceIds,
         ...(target!.mode === "edit" ? { status: f.status } : {}),
@@ -254,12 +271,11 @@ export function ShootForm({
           <Label htmlFor="location">
             Location <span className="font-normal text-muted">(optional)</span>
           </Label>
-          <Input id="location" list="recent-locations" value={f.location} onChange={(e) => set("location", e.target.value)} placeholder="e.g. Aerocity, New Delhi" />
-          <datalist id="recent-locations">
-            {recentLocations.map((l) => (
-              <option key={l} value={l} />
-            ))}
-          </datalist>
+          <LocationPicker
+            value={{ location: f.location, lat: f.locationLat, lng: f.locationLng, placeId: f.locationPlaceId }}
+            recent={recentLocations}
+            onChange={(v) => setF((prev) => (prev ? { ...prev, location: v.location, locationLat: v.lat, locationLng: v.lng, locationPlaceId: v.placeId } : prev))}
+          />
         </div>
 
         <div>
@@ -279,14 +295,23 @@ export function ShootForm({
 
         {isEdit && (
           <div>
-            <Label htmlFor="status">Status</Label>
-            <Select id="status" value={f.status} disabled={target.shoot.status === "CANCELLED"} onChange={(e) => set("status", e.target.value as ShootStatus)}>
-              {(Object.keys(STATUS_META) as ShootStatus[]).map((s) => (
-                <option key={s} value={s}>
-                  {STATUS_META[s].label}
-                </option>
-              ))}
-            </Select>
+            <Label>Status</Label>
+            <div className="flex items-center gap-2">
+              <Pill className={STATUS_META[f.status].pill}>{STATUS_META[f.status].label}</Pill>
+              {f.status === "RESCHEDULED" && target.shoot.status !== "RESCHEDULED" && <span className="text-xs text-muted">— saved when you press Save changes</span>}
+            </div>
+            {target.shoot.status === "CANCELLED" ? (
+              <p className="mt-2 text-xs text-muted">This shoot is cancelled. Cancelled shoots can&apos;t be changed back.</p>
+            ) : (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Button variant="outline" className="text-danger" onClick={() => setConfirmCancel(true)}>
+                  <XCircle size={15} /> Cancel
+                </Button>
+                <Button variant="outline" onClick={() => setRescheduling(true)}>
+                  <CalendarClock size={15} /> Reschedule
+                </Button>
+              </div>
+            )}
             {f.date !== target.shoot.date && target.shoot.status === "PLANNED" && f.status === "PLANNED" && (
               <p className="mt-1 text-xs text-muted">Changing the date marks this shoot as Rescheduled.</p>
             )}
@@ -303,6 +328,51 @@ export function ShootForm({
         <FormError message={error} />
         <p className="hidden text-xs text-muted md:block">Tip: ⌘ + Enter saves.</p>
       </form>
+      {isEdit && rescheduling && (
+        <RescheduleDialog
+          shoot={{ ...target.shoot, date: f.date, startTime: f.startTime || null, endTime: f.endTime || null }}
+          mode="apply"
+          onClose={() => setRescheduling(false)}
+          onApply={(slot) => {
+            setF((prev) => (prev ? { ...prev, date: slot.date, startTime: slot.startTime ?? "", endTime: slot.endTime ?? "", status: "RESCHEDULED" } : prev));
+            setRescheduling(false);
+          }}
+        />
+      )}
+      <Dialog
+        open={confirmCancel}
+        onClose={() => setConfirmCancel(false)}
+        title={`Cancel ${isEdit ? target.shoot.brandName : ""} shoot?`}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmCancel(false)}>
+              Keep it
+            </Button>
+            <Button
+              variant="danger"
+              disabled={saving}
+              onClick={async () => {
+                if (!isEdit) return;
+                setSaving(true);
+                try {
+                  const { shoot } = await api<{ shoot: ShootDTO }>(`/api/shoots/${target.shoot.id}`, { method: "PATCH", body: { status: "CANCELLED" } });
+                  setConfirmCancel(false);
+                  onSaved(shoot, "edit");
+                } catch (e) {
+                  setError((e as Error).message);
+                  setConfirmCancel(false);
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              Cancel shoot
+            </Button>
+          </>
+        }
+      >
+        <p className="text-muted">It stays in history and reports as Cancelled and disappears from the public calendar. This can’t be undone.</p>
+      </Dialog>
     </Drawer>
   );
 }

@@ -44,6 +44,10 @@ export async function POST(req: NextRequest) {
       startTime: input.startTime,
       endTime: input.endTime,
       location: input.location,
+      // A pin only makes sense with both coordinates.
+      locationLat: input.locationLat != null && input.locationLng != null ? input.locationLat : null,
+      locationLng: input.locationLat != null && input.locationLng != null ? input.locationLng : null,
+      locationPlaceId: input.locationPlaceId,
       notes: input.notes,
       status: input.status ?? "PLANNED",
       createdById: g.user.id,

@@ -234,7 +234,16 @@ export function CalendarApp({ isAdmin, readOnly = false }: { isAdmin: boolean; r
         onClose={() => setForm(null)}
         onSaved={(s, mode) => {
           setForm(null);
-          toast(mode === "create" ? `${s.brandName} shoot created for ${fmtDayMonth(s.date)}` : "Shoot updated");
+          const before = form?.mode === "edit" ? form.shoot : null;
+          toast(
+            mode === "create"
+              ? `${s.brandName} shoot created for ${fmtDayMonth(s.date)}`
+              : s.status === "CANCELLED" && before?.status !== "CANCELLED"
+                ? `${s.brandName} shoot cancelled`
+                : s.status === "RESCHEDULED" && before && (before.date !== s.date || before.startTime !== s.startTime)
+                  ? `${s.brandName} rescheduled to ${fmtDayMonth(s.date)}`
+                  : "Shoot updated",
+          );
           if (mode === "edit" && open) setOpen(s);
           const m = parseMonth(s.date.slice(0, 7));
           if (!isSameMonth(m, month)) goto(m);

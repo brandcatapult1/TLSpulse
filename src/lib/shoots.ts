@@ -25,6 +25,9 @@ export function toShootDTO(s: ShootRow): ShootDTO {
     startTime: s.startTime,
     endTime: s.endTime,
     location: s.location,
+    locationLat: s.locationLat,
+    locationLng: s.locationLng,
+    locationPlaceId: s.locationPlaceId,
     status: s.status,
     notes: s.notes,
     resources: s.assignments.map((a) => ({
@@ -54,6 +57,7 @@ export async function checkConflicts(input: {
   date: string;
   brandId?: string | null;
   location?: string | null;
+  locationPlaceId?: string | null;
   shootType?: ShootType | null;
   startTime: string | null;
   endTime: string | null;

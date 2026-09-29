@@ -91,6 +91,10 @@ model Shoot {
   startTime   String?
   endTime     String?
   location    String?
+  // Google Maps pin (optional): exact spot and place id for "same location" checks and map links.
+  locationLat     Float?
+  locationLng     Float?
+  locationPlaceId String?
   status      ShootStatus       @default(PLANNED)
   notes       String?
   assignments ShootAssignment[]
