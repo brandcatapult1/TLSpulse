@@ -196,7 +196,7 @@ export function AppShell({ name, role, children }: { name: string; role: Role; c
             <Menu size={19} />
           </button>
           <Link href="/" aria-label="TLS Pulse home">
-            <Logo />
+            <Logo size="sm" />
           </Link>
           <button aria-label="Search" onClick={() => setSearchOpen(true)} className="ml-auto grid h-9 w-9 place-items-center rounded-lg hover:bg-soft">
             <Search size={18} />

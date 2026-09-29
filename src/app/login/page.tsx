@@ -13,7 +13,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <main className="grid min-h-dvh place-items-center bg-soft px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <Logo className="text-lg" />
+          <Logo size="lg" />
           <p className="mt-2 text-sm text-muted">Shoot planning for The Lightscape Studio</p>
         </div>
         <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm">

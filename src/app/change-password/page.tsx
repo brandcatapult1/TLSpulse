@@ -11,7 +11,7 @@ export default async function ChangePasswordPage() {
     <main className="grid min-h-dvh place-items-center bg-soft px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <Logo className="text-lg" />
+          <Logo size="lg" />
         </div>
         <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
           <h1 className="text-base font-semibold">
