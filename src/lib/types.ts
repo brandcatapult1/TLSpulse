@@ -32,6 +32,8 @@ export type ResourceDTO = {
   role: string;
   teamId: string;
   teamName: string;
+  email: string | null;
+  phone: string | null;
   teamType: Engagement; // Internal/External comes from the team
   status: ActiveState;
   shootsThisMonth?: number;

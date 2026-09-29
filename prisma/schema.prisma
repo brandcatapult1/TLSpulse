@@ -73,6 +73,9 @@ model Resource {
   id          String            @id @default(cuid())
   name        String
   role        String
+  // Contact details; also how crew open their schedule at /crew (each must be unique).
+  email       String?           @unique
+  phone       String?           @unique // digits only, e.g. "9876543210"
   teamId      String
   team        Team              @relation(fields: [teamId], references: [id])
   status      ActiveState       @default(ACTIVE)

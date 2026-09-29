@@ -5,6 +5,7 @@ import { BarChart3, Copy, KeyRound, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { formatPhone } from "@/lib/contact";
 import { CREW_LOGIN_ENABLED } from "@/lib/permissions";
 import type { Engagement, ResourceDTO, TeamDTO } from "@/lib/types";
 import { Dialog, Drawer } from "../Overlay";
@@ -40,7 +41,7 @@ export function ResourcesPage({ isAdmin }: { isAdmin: boolean }) {
         (showInactive || r.status === "ACTIVE") &&
         (!teamFilter || r.teamId === teamFilter) &&
         (!typeFilter || r.teamType === typeFilter) &&
-        (!n || `${r.name} ${r.role} ${r.teamName}`.toLowerCase().includes(n)),
+        (!n || `${r.name} ${r.role} ${r.teamName} ${r.email ?? ""} ${r.phone ?? ""}`.toLowerCase().includes(n)),
     );
   }, [resources, q, teamFilter, typeFilter, showInactive]);
   const inactive = (resources ?? []).filter((r) => r.status === "INACTIVE").length;
@@ -84,7 +85,7 @@ export function ResourcesPage({ isAdmin }: { isAdmin: boolean }) {
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <div className="relative w-full max-w-xs">
               <Search size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people or roles" className="pl-9" />
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, role, mobile, email" className="pl-9" />
             </div>
             <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as "" | Engagement)} className="w-auto" aria-label="Internal or external">
               <option value="">Internal + External</option>
@@ -115,6 +116,7 @@ export function ResourcesPage({ isAdmin }: { isAdmin: boolean }) {
                 <>
                   <Th>Name</Th>
                   <Th className="hidden sm:table-cell">Role</Th>
+                  <Th className="hidden lg:table-cell">Contact</Th>
                   <Th className="hidden sm:table-cell">Team</Th>
                   <Th className="hidden md:table-cell">Type</Th>
                   <Th className="text-right">This month</Th>
@@ -139,6 +141,11 @@ export function ResourcesPage({ isAdmin }: { isAdmin: boolean }) {
                     </span>
                   </Td>
                   <Td className="hidden sm:table-cell">{r.role}</Td>
+                  <Td className="hidden text-xs text-muted lg:table-cell">
+                    {r.phone && <span className="tabular block">{formatPhone(r.phone)}</span>}
+                    {r.email && <span className="block">{r.email}</span>}
+                    {!r.phone && !r.email && "—"}
+                  </Td>
                   <Td className="hidden text-muted sm:table-cell">{r.teamName}</Td>
                   <Td className="hidden md:table-cell">
                     <TeamTypeBadge type={r.teamType} />
@@ -246,13 +253,19 @@ function useAction(onSaved: (m: string) => void) {
 
 function ResourceDrawer({ resource, teams, onClose, onSaved }: { resource: ResourceDTO | "new" | null; teams: TeamDTO[]; onClose: () => void; onSaved: (m: string) => void }) {
   const existing = resource && resource !== "new" ? resource : null;
-  const [f, setF] = useState({ name: "", role: "", teamId: "" });
+  const [f, setF] = useState({ name: "", role: "", teamId: "", email: "", phone: "" });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { error, setError, busy, run } = useAction(onSaved);
 
   useEffect(() => {
     setError(null);
-    setF({ name: existing?.name ?? "", role: existing?.role ?? "", teamId: existing?.teamId ?? teams.find((t) => t.status === "ACTIVE")?.id ?? "" });
+    setF({
+      name: existing?.name ?? "",
+      role: existing?.role ?? "",
+      teamId: existing?.teamId ?? teams.find((t) => t.status === "ACTIVE")?.id ?? "",
+      email: existing?.email ?? "",
+      phone: existing?.phone ?? "",
+    });
   }, [resource]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedTeam = teams.find((t) => t.id === f.teamId);
@@ -320,6 +333,17 @@ function ResourceDrawer({ resource, teams, onClose, onSaved }: { resource: Resou
               ))}
             </datalist>
           </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="rphone">Mobile</Label>
+              <Input id="rphone" type="tel" inputMode="tel" autoComplete="off" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="98765 43210" />
+            </div>
+            <div>
+              <Label htmlFor="remail">Email</Label>
+              <Input id="remail" type="email" autoComplete="off" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="name@example.com" />
+            </div>
+          </div>
+          <p className="-mt-2 text-xs text-muted">Crew use their mobile or email to open their schedule at /crew. Each must be unique.</p>
           <div>
             <Label htmlFor="rteam">Team</Label>
             <Select id="rteam" value={f.teamId} onChange={(e) => setF({ ...f, teamId: e.target.value })}>

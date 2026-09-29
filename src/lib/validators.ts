@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeEmail, normalizePhone } from "./contact";
 import { isYmd } from "./dates";
 import { sanitizeNotes } from "./rich-text-sanitize";
 
@@ -81,6 +82,20 @@ export const TeamInput = z.object({
 export const ResourceInput = z.object({
   name: z.string().trim().min(1, "Name is required").max(80),
   role: z.string().trim().min(1, "Role is required").max(80),
+  email: z
+    .string()
+    .trim()
+    .max(120)
+    .nullish()
+    .refine((v) => !v || !!normalizeEmail(v), "Enter a valid email")
+    .transform((v) => normalizeEmail(v)),
+  phone: z
+    .string()
+    .trim()
+    .max(30)
+    .nullish()
+    .refine((v) => !v || !!normalizePhone(v), "Enter a valid phone number")
+    .transform((v) => normalizePhone(v)),
   teamId: z.string().min(1, "Pick a team"),
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
 });

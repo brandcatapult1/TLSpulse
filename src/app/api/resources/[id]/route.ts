@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { contactTaken } from "@/lib/contact-db";
 import { bad, readJson } from "@/lib/http";
 import { firstError, ResourceInput } from "@/lib/validators";
 
@@ -16,6 +17,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (parsed.data.teamId && !(await db.team.findUnique({ where: { id: parsed.data.teamId } }))) return bad("Team not found");
   const before = await db.resource.findUnique({ where: { id } });
   if (!before) return bad("Resource not found", 404);
+  const clash = await contactTaken(parsed.data.email, parsed.data.phone, id);
+  if (clash) return bad(clash, 409);
   const resource = await db.resource.update({ where: { id }, data: parsed.data });
   const what = parsed.data.status && parsed.data.status !== before.status ? (resource.status === "ACTIVE" ? "reactivated" : "deactivated") : "updated";
   await writeAudit({ actorId: g.user.id, action: "RESOURCE_UPDATED", entity: "resource", entityId: id, summary: `${g.user.name} ${what} ${resource.name}` });

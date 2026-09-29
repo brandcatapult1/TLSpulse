@@ -18,6 +18,8 @@ export function SettingsPage() {
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [more, setMore] = useState(true);
   const url = link ? `${window.location.origin}${link.path}` : "";
+  const [crewUrl, setCrewUrl] = useState("");
+  useEffect(() => setCrewUrl(`${window.location.origin}/crew`), []);
 
   const loadAudit = useCallback(async (before?: string) => {
     const r = await api<{ entries: Entry[] }>(`/api/audit${before ? `?before=${encodeURIComponent(before)}` : ""}`);
@@ -99,6 +101,33 @@ export function SettingsPage() {
         ) : (
           <Skeleton className="mt-4 h-10" />
         )}
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-line p-5">
+        <h2 className="font-semibold">Crew schedule link</h2>
+        <p className="mt-1 text-sm text-muted">
+          Share with crew. They enter the mobile number or email saved on their Resources profile and see only their own shoots (date, time, brand, type, location,
+          who else is on it). No notes, and nothing else in the app.
+        </p>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <input readOnly value={crewUrl} onFocus={(e) => e.target.select()} className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-soft px-3 font-mono text-sm" />
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                navigator.clipboard.writeText(crewUrl);
+                toast("Link copied");
+              }}
+            >
+              <Copy size={15} /> Copy
+            </Button>
+            <a href={crewUrl} target="_blank" rel="noreferrer">
+              <Button variant="outline">
+                <ExternalLink size={15} /> Open
+              </Button>
+            </a>
+          </div>
+        </div>
       </section>
 
       <section className="mt-6 rounded-2xl border border-line p-5">

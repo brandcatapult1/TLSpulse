@@ -3,6 +3,7 @@ import { writeAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { bad, readJson } from "@/lib/http";
+import { contactTaken } from "@/lib/contact-db";
 import { currentMonthCounts } from "@/lib/month-counts";
 import { firstError, ResourceInput } from "@/lib/validators";
 
@@ -23,6 +24,8 @@ export async function GET(req: NextRequest) {
       id: r.id,
       name: r.name,
       role: r.role,
+      email: r.email,
+      phone: r.phone,
       teamId: r.teamId,
       teamName: r.team.name,
       teamType: r.team.type,
@@ -41,6 +44,8 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return bad(firstError(parsed.error));
   const team = await db.team.findUnique({ where: { id: parsed.data.teamId } });
   if (!team) return bad("Team not found");
+  const clash = await contactTaken(parsed.data.email, parsed.data.phone);
+  if (clash) return bad(clash, 409);
   const resource = await db.resource.create({ data: parsed.data });
   await writeAudit({ actorId: g.user.id, action: "RESOURCE_CREATED", entity: "resource", entityId: resource.id, summary: `${g.user.name} added ${resource.name} (${resource.role}) to ${team.name} (${team.type === "EXTERNAL" ? "External" : "Internal"})` });
   return NextResponse.json({ resource }, { status: 201 });
