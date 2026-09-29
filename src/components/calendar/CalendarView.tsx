@@ -74,9 +74,6 @@ export function CalendarView(p: Props) {
             <ChevronRight size={18} />
           </button>
         </div>
-        <Button variant="outline" size="sm" onClick={p.onToday}>
-          Today
-        </Button>
         <div className="tabular order-last w-full text-sm text-muted sm:order-none sm:w-auto">
           <span className="font-medium text-ink">
             {inMonth.length} {p.mineLabel ?? "Shoots"}
