@@ -3,7 +3,7 @@
 import { CalendarClock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { fmtLong, fmtTimeRange } from "@/lib/dates";
+import { fmtLong, fmtTimeRange, plusHour, ymd } from "@/lib/dates";
 import type { ConflictReport, ShootDTO } from "@/lib/types";
 import { useToast } from "../Toast";
 import { Button, FormError, Input, Label } from "../ui";
@@ -69,9 +69,11 @@ export function RescheduleDialog({
     return () => document.removeEventListener("keydown", onKey, true);
   }, [onClose]);
 
+  const pastDate = date < ymd(new Date());
   const unchanged = date === shoot.date && (start || null) === shoot.startTime && (end || null) === shoot.endTime;
   const clash = (report?.resourceConflicts ?? []).some((c) => c.severity === "clash");
-  const badTimes = !!start && !!end && end <= start;
+  const timeError = end && !start ? "Add a start time, or clear the end time." : start && end && end <= start ? "End time must be after start time." : null;
+  const badTimes = !!timeError;
 
   async function confirm() {
     const slot = { date, startTime: start || null, endTime: end || null };
@@ -105,17 +107,28 @@ export function RescheduleDialog({
         </p>
 
         <div className="mt-4 rounded-xl border border-line p-3">
-          <MiniCalendar value={date} onChange={setDate} original={shoot.date} />
+          <MiniCalendar value={date} onChange={setDate} original={shoot.date} minDate={ymd(new Date())} />
         </div>
 
         <div className="mt-4">
-          <Label>New time</Label>
+          <Label>
+            New time <span className="font-normal text-muted">(optional)</span>
+          </Label>
           <div className="flex items-center gap-2">
-            <Input type="time" step={900} aria-label="New start time" value={start} onChange={(e) => setStart(e.target.value)} />
+            <Input
+              type="time"
+              step={900}
+              aria-label="New start time"
+              value={start}
+              onChange={(e) => {
+                setStart(e.target.value);
+                if (e.target.value && end && end <= e.target.value) setEnd(plusHour(e.target.value));
+              }}
+            />
             <span className="text-muted">—</span>
-            <Input type="time" step={900} aria-label="New end time" value={end} onChange={(e) => setEnd(e.target.value)} />
+            <Input type="time" step={900} aria-label="New end time" min={start || undefined} value={end} onChange={(e) => setEnd(e.target.value)} />
           </div>
-          {badTimes && <p className="mt-1 text-xs text-danger">End time must be after start time.</p>}
+          {timeError && <p className="mt-1 text-xs text-danger">{timeError}</p>}
         </div>
 
         <ResourceConflictNotes report={report} selected={crew} date={date} />
@@ -128,7 +141,7 @@ export function RescheduleDialog({
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={confirm} disabled={busy || unchanged || clash || badTimes || !report}>
+            <Button onClick={confirm} disabled={busy || unchanged || clash || badTimes || pastDate || !report}>
               {mode === "save" ? "Reschedule" : "Use new date"}
             </Button>
           </div>

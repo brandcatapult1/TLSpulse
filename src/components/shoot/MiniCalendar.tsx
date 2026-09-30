@@ -7,7 +7,7 @@ import { useState } from "react";
 import { monthGrid, parseYmd, ymd } from "@/lib/dates";
 
 /** Compact Monday-first month picker. `original` is marked so the user sees where the shoot was. */
-export function MiniCalendar({ value, onChange, original }: { value: string; onChange: (d: string) => void; original?: string }) {
+export function MiniCalendar({ value, onChange, original, minDate }: { value: string; onChange: (d: string) => void; original?: string; minDate?: string }) {
   const [month, setMonth] = useState(() => parseYmd(value));
   const today = ymd(new Date());
   return (
@@ -32,10 +32,12 @@ export function MiniCalendar({ value, onChange, original }: { value: string; onC
         {monthGrid(month).map((d) => {
           const key = ymd(d);
           const selected = key === value;
+          const disabled = !!minDate && key < minDate;
           return (
             <button
               key={key}
               type="button"
+              disabled={disabled}
               onClick={() => onChange(key)}
               aria-pressed={selected}
               aria-label={format(d, "EEEE d MMMM yyyy")}
@@ -44,6 +46,7 @@ export function MiniCalendar({ value, onChange, original }: { value: string; onC
                 selected ? "bg-ink font-semibold text-surface" : "hover:bg-soft",
                 !selected && key === today && "font-semibold text-social",
                 !isSameMonth(d, month) && !selected && "text-muted/50",
+                disabled && "cursor-not-allowed text-muted/30 line-through decoration-muted/30 hover:bg-transparent",
               )}
             >
               {d.getDate()}

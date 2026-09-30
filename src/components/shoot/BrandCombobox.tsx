@@ -73,6 +73,7 @@ export function BrandCombobox({
     <div ref={box} className="relative">
       <div className="relative">
         <Input
+          id="brand"
           role="combobox"
           aria-expanded={open}
           aria-invalid={invalid}

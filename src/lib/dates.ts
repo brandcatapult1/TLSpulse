@@ -35,6 +35,13 @@ export function monthRange(month: Date) {
   return { from: ymd(first), toExclusive: ymd(next) };
 }
 
+/** "10:00" → "11:00" (capped at 23:59). */
+export function plusHour(t: string): string {
+  const [h, m] = t.split(":").map(Number);
+  const mins = Math.min(h * 60 + m + 60, 23 * 60 + 59);
+  return `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+}
+
 export function fmtTime(t: string | null | undefined): string {
   if (!t) return "";
   const [h, m] = t.split(":").map(Number);
@@ -48,10 +55,12 @@ export function fmtTimeRange(start: string | null, end: string | null): string {
   return end ? `${fmtTime(start)} – ${fmtTime(end)}` : fmtTime(start);
 }
 
-export const fmtDayMonth = (s: string) => format(parseYmd(s), "d MMMM");
-export const fmtShort = (s: string) => format(parseYmd(s), "d MMM");
-export const fmtLong = (s: string) => format(parseYmd(s), "d MMMM yyyy");
-export const fmtWeekday = (s: string) => format(parseYmd(s), "EEEE, d MMMM");
+// Display helpers never throw: an empty or half-typed date (e.g. while editing a form) renders as "".
+const safeFormat = (s: string, pattern: string) => (isYmd(s) ? format(parseYmd(s), pattern) : "");
+export const fmtDayMonth = (s: string) => safeFormat(s, "d MMMM");
+export const fmtShort = (s: string) => safeFormat(s, "d MMM");
+export const fmtLong = (s: string) => safeFormat(s, "d MMMM yyyy");
+export const fmtWeekday = (s: string) => safeFormat(s, "EEEE, d MMMM");
 
 /** Timed shoots by start, then untimed by brand, cancelled last (Handbook §8.6). */
 export function sortShoots<T extends { startTime: string | null; brandName: string; status: string }>(list: T[]): T[] {

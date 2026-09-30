@@ -48,12 +48,15 @@ function endAfterStart(v: { startTime?: string | null; endTime?: string | null }
   return !(v.startTime && v.endTime) || v.endTime > v.startTime;
 }
 const endMsg = { message: "End time must be after start time", path: ["endTime"] };
+const needsStart = (v: { startTime?: string | null; endTime?: string | null }) => !v.endTime || !!v.startTime || v.startTime === undefined;
+const needsStartMsg = { message: "Add a start time, or clear the end time", path: ["startTime"] };
 
 export const ShootCreate = z
   .object({ ...shootFields, resourceIds: shootFields.resourceIds.default([]), status: shootFields.status.optional() })
-  .refine(endAfterStart, endMsg);
+  .refine(endAfterStart, endMsg)
+  .refine((v) => !v.endTime || !!v.startTime, needsStartMsg);
 
-export const ShootPatch = z.object(shootFields).partial().refine(endAfterStart, endMsg);
+export const ShootPatch = z.object(shootFields).partial().refine(endAfterStart, endMsg).refine(needsStart, needsStartMsg);
 
 export const ConflictCheck = z.object({
   date: z.string().refine(isYmd),

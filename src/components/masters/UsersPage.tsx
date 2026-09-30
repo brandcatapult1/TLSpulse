@@ -7,7 +7,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Dialog, Drawer } from "../Overlay";
 import { useToast } from "../Toast";
-import { Button, FormError, Input, Label, PageHeader, Pill, Skeleton } from "../ui";
+import { rule, useFieldErrors } from "@/lib/form-rules";
+import { Button, FieldError, FormError, Input, Label, PageHeader, Pill, Skeleton } from "../ui";
 import { Table, Td, Th } from "./Table";
 
 type User = {
@@ -147,10 +148,12 @@ function UserDrawer({
   const [f, setF] = useState({ name: "", email: "", role: "USER" as "ADMIN" | "USER" | "CREW" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const v = useFieldErrors();
   const isMe = existing?.id === meId;
 
   useEffect(() => {
     setError(null);
+    v.reset();
     setF({ name: existing?.name ?? "", email: existing?.email ?? "", role: existing?.role ?? "USER" });
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -170,7 +173,11 @@ function UserDrawer({
   }
 
   const isCrew = existing?.role === "CREW";
-  const save = () => (existing ? call(isCrew ? { name: f.name } : { name: f.name, role: f.role }, "User updated") : call(f, "User added"));
+  const save = () =>
+    v.validate({
+      uname: [rule.required(f.name, "Name"), rule.max(f.name, 80, "Name")],
+      ...(existing ? {} : { uemail: [rule.required(f.email, "Email"), rule.email(f.email)] }),
+    }) && (existing ? call(isCrew ? { name: f.name } : { name: f.name, role: f.role }, "User updated") : call(f, "User added"));
 
   return (
     <Drawer
@@ -182,7 +189,7 @@ function UserDrawer({
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={save} disabled={busy || !f.name.trim() || (!existing && !f.email.trim())}>
+          <Button onClick={save} disabled={busy}>
             {existing ? "Save" : "Add user"}
           </Button>
         </>
@@ -196,12 +203,36 @@ function UserDrawer({
         }}
       >
         <div>
-          <Label htmlFor="uname">Name</Label>
-          <Input id="uname" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required />
+          <Label htmlFor="uname" required>
+            Name
+          </Label>
+          <Input
+            {...v.field("uname")}
+            value={f.name}
+            maxLength={80}
+            onChange={(e) => {
+              setF({ ...f, name: e.target.value });
+              v.clear("uname");
+            }}
+          />
+          <FieldError id="uname-error" message={v.errors.uname} />
         </div>
         <div>
-          <Label htmlFor="uemail">Email</Label>
-          <Input id="uemail" type="email" value={f.email} disabled={!!existing} onChange={(e) => setF({ ...f, email: e.target.value })} required />
+          <Label htmlFor="uemail" required={!existing}>
+            Email
+          </Label>
+          <Input
+            {...v.field("uemail")}
+            type="email"
+            maxLength={120}
+            value={f.email}
+            disabled={!!existing}
+            onChange={(e) => {
+              setF({ ...f, email: e.target.value });
+              v.clear("uemail");
+            }}
+          />
+          <FieldError id="uemail-error" message={v.errors.uemail} />
         </div>
         {isCrew ? (
           <p className="rounded-xl bg-soft px-3 py-2.5 text-sm">

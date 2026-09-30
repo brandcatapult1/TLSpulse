@@ -10,7 +10,8 @@ import { CREW_LOGIN_ENABLED } from "@/lib/permissions";
 import type { Engagement, ResourceDTO, TeamDTO } from "@/lib/types";
 import { Dialog, Drawer } from "../Overlay";
 import { useToast } from "../Toast";
-import { Button, EmptyState, FormError, Input, Label, PageHeader, Select, Skeleton } from "../ui";
+import { rule, useFieldErrors } from "@/lib/form-rules";
+import { Button, EmptyState, FieldError, FormError, Input, Label, PageHeader, Select, Skeleton } from "../ui";
 import { StatusDot, Table, Td, Th } from "./Table";
 
 export function ResourcesPage({ isAdmin }: { isAdmin: boolean }) {
@@ -256,9 +257,11 @@ function ResourceDrawer({ resource, teams, onClose, onSaved }: { resource: Resou
   const [f, setF] = useState({ name: "", role: "", teamId: "", email: "", phone: "" });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { error, setError, busy, run } = useAction(onSaved);
+  const v = useFieldErrors();
 
   useEffect(() => {
     setError(null);
+    v.reset();
     setF({
       name: existing?.name ?? "",
       role: existing?.role ?? "",
@@ -270,6 +273,13 @@ function ResourceDrawer({ resource, teams, onClose, onSaved }: { resource: Resou
 
   const selectedTeam = teams.find((t) => t.id === f.teamId);
   const save = () =>
+    v.validate({
+      rname: [rule.required(f.name, "Name"), rule.max(f.name, 80, "Name")],
+      rrole: [rule.required(f.role, "Designation / Role"), rule.max(f.role, 80, "Designation / Role")],
+      rphone: [rule.phone(f.phone)],
+      remail: [rule.email(f.email), rule.max(f.email, 120, "Email")],
+      rteam: [rule.required(f.teamId, "Team")],
+    }) &&
     run(
       () => (existing ? api(`/api/resources/${existing.id}`, { method: "PATCH", body: f }) : api("/api/resources", { body: f })),
       existing ? "Resource updated" : `${f.name} added`,
@@ -306,7 +316,7 @@ function ResourceDrawer({ resource, teams, onClose, onSaved }: { resource: Resou
               <Button variant="ghost" onClick={onClose}>
                 Cancel
               </Button>
-              <Button onClick={save} disabled={busy || !f.name.trim() || !f.role.trim() || !f.teamId}>
+              <Button onClick={save} disabled={busy}>
                 {existing ? "Save" : "Add resource"}
               </Button>
             </div>
@@ -321,12 +331,36 @@ function ResourceDrawer({ resource, teams, onClose, onSaved }: { resource: Resou
           }}
         >
           <div>
-            <Label htmlFor="rname">Name</Label>
-            <Input id="rname" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required />
+            <Label htmlFor="rname" required>
+              Name
+            </Label>
+            <Input
+              {...v.field("rname")}
+              value={f.name}
+              maxLength={80}
+              onChange={(e) => {
+                setF({ ...f, name: e.target.value });
+                v.clear("rname");
+              }}
+            />
+            <FieldError id="rname-error" message={v.errors.rname} />
           </div>
           <div>
-            <Label htmlFor="rrole">Designation / Role</Label>
-            <Input id="rrole" list="roles" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} placeholder="Photographer, Videographer, Producer…" required />
+            <Label htmlFor="rrole" required>
+              Designation / Role
+            </Label>
+            <Input
+              {...v.field("rrole")}
+              list="roles"
+              value={f.role}
+              maxLength={80}
+              onChange={(e) => {
+                setF({ ...f, role: e.target.value });
+                v.clear("rrole");
+              }}
+              placeholder="Photographer, Videographer, Producer…"
+            />
+            <FieldError id="rrole-error" message={v.errors.rrole} />
             <datalist id="roles">
               {["Photographer", "Videographer", "Producer", "Editor", "Stylist", "Assistant"].map((r) => (
                 <option key={r} value={r} />
@@ -336,17 +370,54 @@ function ResourceDrawer({ resource, teams, onClose, onSaved }: { resource: Resou
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="rphone">Mobile</Label>
-              <Input id="rphone" type="tel" inputMode="tel" autoComplete="off" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="98765 43210" />
+              <Input
+                {...v.field("rphone")}
+                type="tel"
+                inputMode="tel"
+                autoComplete="off"
+                maxLength={20}
+                value={f.phone}
+                onChange={(e) => {
+                  setF({ ...f, phone: e.target.value });
+                  v.clear("rphone");
+                }}
+                placeholder="98765 43210"
+              />
+              <FieldError id="rphone-error" message={v.errors.rphone} />
             </div>
             <div>
               <Label htmlFor="remail">Email</Label>
-              <Input id="remail" type="email" autoComplete="off" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="name@example.com" />
+              <Input
+                {...v.field("remail")}
+                type="email"
+                autoComplete="off"
+                maxLength={120}
+                value={f.email}
+                onChange={(e) => {
+                  setF({ ...f, email: e.target.value });
+                  v.clear("remail");
+                }}
+                placeholder="name@example.com"
+              />
+              <FieldError id="remail-error" message={v.errors.remail} />
             </div>
           </div>
           <p className="-mt-2 text-xs text-muted">Crew use their mobile or email to open their schedule at /crew. Each must be unique.</p>
           <div>
-            <Label htmlFor="rteam">Team</Label>
-            <Select id="rteam" value={f.teamId} onChange={(e) => setF({ ...f, teamId: e.target.value })}>
+            <Label htmlFor="rteam" required>
+              Team
+            </Label>
+            <Select
+              id="rteam"
+              aria-invalid={v.errors.rteam ? true : undefined}
+              className={v.errors.rteam ? "border-danger" : undefined}
+              value={f.teamId}
+              onChange={(e) => {
+                setF({ ...f, teamId: e.target.value });
+                v.clear("rteam");
+              }}
+            >
+              {!f.teamId && <option value="">Choose a team…</option>}
               {(["INTERNAL", "EXTERNAL"] as const).map((type) => {
                 const group = teams.filter((t) => t.type === type);
                 if (!group.length) return null;
@@ -361,6 +432,7 @@ function ResourceDrawer({ resource, teams, onClose, onSaved }: { resource: Resou
                 );
               })}
             </Select>
+            <FieldError id="rteam-error" message={v.errors.rteam} />
             {selectedTeam && (
               <p className="mt-2 flex items-center gap-2 text-xs text-muted">
                 <TeamTypeBadge type={selectedTeam.type} /> {f.name.trim() || "This person"} will be marked {selectedTeam.type === "EXTERNAL" ? "External" : "Internal"}, from the
@@ -405,12 +477,18 @@ function TeamDrawer({ team, onClose, onSaved }: { team: TeamDTO | "new" | null; 
   const [name, setName] = useState("");
   const [type, setType] = useState<Engagement | "">("");
   const { error, setError, busy, run } = useAction(onSaved);
+  const v = useFieldErrors();
   useEffect(() => {
     setError(null);
+    v.reset();
     setName(existing?.name ?? "");
     setType(existing?.type ?? "");
   }, [team]); // eslint-disable-line react-hooks/exhaustive-deps
   const save = () =>
+    v.validate({
+      tname: [rule.required(name, "Team name"), rule.max(name, 80, "Team name")],
+      ttype: [type ? null : "Choose Internal or External"],
+    }) &&
     run(
       () => (existing ? api(`/api/teams/${existing.id}`, { method: "PATCH", body: { name, type } }) : api("/api/teams", { body: { name, type } })),
       existing ? "Team updated" : `${name} added as ${type === "EXTERNAL" ? "an external" : "an internal"} team`,
@@ -440,7 +518,7 @@ function TeamDrawer({ team, onClose, onSaved }: { team: TeamDTO | "new" | null; 
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={save} disabled={busy || !name.trim() || !type}>
+            <Button onClick={save} disabled={busy}>
               {existing ? "Save" : "Add team"}
             </Button>
           </div>
@@ -455,19 +533,34 @@ function TeamDrawer({ team, onClose, onSaved }: { team: TeamDTO | "new" | null; 
         }}
       >
         <div>
-          <Label htmlFor="tname">Team name</Label>
-          <Input id="tname" value={name} onChange={(e) => setName(e.target.value)} placeholder="Photography, Video, Freelance Crew…" required />
+          <Label htmlFor="tname" required>
+            Team name
+          </Label>
+          <Input
+            {...v.field("tname")}
+            value={name}
+            maxLength={80}
+            onChange={(e) => {
+              setName(e.target.value);
+              v.clear("tname");
+            }}
+            placeholder="Photography, Video, Freelance Crew…"
+          />
+          <FieldError id="tname-error" message={v.errors.tname} />
         </div>
         <div>
-          <Label>Team type</Label>
-          <div role="radiogroup" className="grid grid-cols-2 gap-2">
+          <Label required>Team type</Label>
+          <div role="radiogroup" id="ttype" tabIndex={-1} aria-invalid={v.errors.ttype ? true : undefined} className={clsx("grid grid-cols-2 gap-2 rounded-xl outline-none", v.errors.ttype && "ring-2 ring-danger/60")}>
             {(["INTERNAL", "EXTERNAL"] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 role="radio"
                 aria-checked={type === t}
-                onClick={() => setType(t)}
+                onClick={() => {
+                  setType(t);
+                  v.clear("ttype");
+                }}
                 className={clsx("rounded-xl border px-3 py-2.5 text-left text-sm", type === t ? "border-ink bg-soft" : "border-line hover:bg-soft")}
               >
                 <span className="flex items-center gap-2 font-medium">
@@ -477,6 +570,7 @@ function TeamDrawer({ team, onClose, onSaved }: { team: TeamDTO | "new" | null; 
               </button>
             ))}
           </div>
+          <FieldError id="ttype-error" message={v.errors.ttype} />
           <p className="mt-2 text-xs text-muted">Everyone added to this team is marked {type === "EXTERNAL" ? "External" : type === "INTERNAL" ? "Internal" : "with this type"}.</p>
         </div>
         <FormError message={error} />

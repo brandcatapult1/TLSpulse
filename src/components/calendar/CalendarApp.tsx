@@ -85,7 +85,7 @@ export function CalendarApp({ isAdmin, readOnly = false }: { isAdmin: boolean; r
     sp.delete("shoot");
     sp.delete("new");
     router.replace(`${pathname}?${sp.toString()}`, { scroll: false });
-    if (wantsNew && !readOnly) setForm({ mode: "create", date: selectedDate });
+    if (wantsNew && !readOnly) newShootOn(selectedDate);
     if (sid) {
       const m = parseMonth(params.get("m"));
       if (monthKey(m) !== key) setMonth(m);
@@ -103,6 +103,9 @@ export function CalendarApp({ isAdmin, readOnly = false }: { isAdmin: boolean; r
     setSelectedDate(isSameMonth(new Date(), m) ? ymd(new Date()) : ymd(m));
   }, []);
 
+  // New shoots can't be in the past: default to today when the chosen day has gone.
+  const newShootOn = useCallback((date: string) => setForm({ mode: "create", date: date < ymd(new Date()) ? ymd(new Date()) : date }), []);
+
   const overlayOpen = !!(open || form || move);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -113,12 +116,12 @@ export function CalendarApp({ isAdmin, readOnly = false }: { isAdmin: boolean; r
       else if (e.key === "t" || e.key === "T") goto(parseMonth(null));
       else if (!readOnly && (e.key === "n" || e.key === "N")) {
         e.preventDefault();
-        setForm({ mode: "create", date: selectedDate });
+        newShootOn(selectedDate);
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [overlayOpen, month, goto, selectedDate, readOnly]);
+  }, [overlayOpen, month, goto, selectedDate, readOnly, newShootOn]);
 
   // Local list updates, then refetch to stay honest.
   const upsert = (s: ShootDTO) => {
@@ -167,7 +170,7 @@ export function CalendarApp({ isAdmin, readOnly = false }: { isAdmin: boolean; r
         onNext={() => goto(addMonths(month, 1))}
         onToday={() => goto(parseMonth(null))}
         onOpenShoot={setOpen}
-        onCreateAt={readOnly ? undefined : (date) => setForm({ mode: "create", date })}
+        onCreateAt={readOnly ? undefined : (date) => (date < today ? toast("Shoots can't be added on past dates", "warn") : newShootOn(date))}
         onMove={readOnly ? undefined : (shoot, to) => setMove({ shoot, to })}
         mineLabel={readOnly ? "My shoots" : undefined}
         selectedDate={selectedDate}
@@ -191,7 +194,7 @@ export function CalendarApp({ isAdmin, readOnly = false }: { isAdmin: boolean; r
             </button>
             {!readOnly && (
               <span className="hidden md:block">
-                <Button onClick={() => setForm({ mode: "create", date: isSameMonth(new Date(), month) ? today : ymd(month) })}>
+                <Button onClick={() => newShootOn(isSameMonth(new Date(), month) ? today : ymd(month))}>
                   <Plus size={16} /> New Shoot
                 </Button>
               </span>
@@ -204,7 +207,7 @@ export function CalendarApp({ isAdmin, readOnly = false }: { isAdmin: boolean; r
       {!readOnly && (
         <button
           aria-label="New shoot"
-          onClick={() => setForm({ mode: "create", date: selectedDate })}
+          onClick={() => newShootOn(selectedDate)}
           className="fixed right-5 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-30 grid h-14 w-14 place-items-center rounded-full bg-ink text-surface shadow-xl active:scale-95 md:hidden"
         >
           <Plus size={26} />

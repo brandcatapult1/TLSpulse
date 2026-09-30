@@ -7,7 +7,8 @@ import { api } from "@/lib/api";
 import type { BrandDTO } from "@/lib/types";
 import { Drawer } from "../Overlay";
 import { useToast } from "../Toast";
-import { Button, EmptyState, FormError, Input, Label, PageHeader, Select, Skeleton } from "../ui";
+import { rule, useFieldErrors } from "@/lib/form-rules";
+import { Button, EmptyState, FieldError, FormError, Input, Label, PageHeader, Select, Skeleton } from "../ui";
 import { StatusDot, Table, Td, Th } from "./Table";
 
 export function BrandsPage({ isAdmin }: { isAdmin: boolean }) {
@@ -149,9 +150,11 @@ function BrandDrawer({ brand, isAdmin, onClose, onSaved }: { brand: BrandDTO | "
   const [busy, setBusy] = useState(false);
   const isNew = brand === "new";
   const existing = brand && brand !== "new" ? brand : null;
+  const v = useFieldErrors();
 
   useEffect(() => {
     setError(null);
+    v.reset();
     setName(existing?.name ?? "");
     setGroup(existing?.companyGroup ?? "");
   }, [brand]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -170,6 +173,10 @@ function BrandDrawer({ brand, isAdmin, onClose, onSaved }: { brand: BrandDTO | "
   }
 
   const save = () =>
+    v.validate({
+      bname: [rule.required(name, "Brand name"), rule.max(name, 120, "Brand name")],
+      bgroup: [rule.max(group, 120, "Company / Group")],
+    }) &&
     run(
       () => (isNew ? api("/api/brands", { body: { name, companyGroup: group } }) : api(`/api/brands/${existing!.id}`, { method: "PATCH", body: { name, companyGroup: group } })),
       isNew ? `${name} added` : "Brand updated",
@@ -203,7 +210,7 @@ function BrandDrawer({ brand, isAdmin, onClose, onSaved }: { brand: BrandDTO | "
               <Button variant="ghost" onClick={onClose}>
                 Cancel
               </Button>
-              <Button onClick={save} disabled={busy || !name.trim()}>
+              <Button onClick={save} disabled={busy}>
                 {isNew ? "Add brand" : "Save"}
               </Button>
             </div>
@@ -218,14 +225,27 @@ function BrandDrawer({ brand, isAdmin, onClose, onSaved }: { brand: BrandDTO | "
           }}
         >
           <div>
-            <Label htmlFor="bname">Brand name</Label>
-            <Input id="bname" value={name} onChange={(e) => setName(e.target.value)} required autoFocus={isNew} />
+            <Label htmlFor="bname" required>
+              Brand name
+            </Label>
+            <Input
+              {...v.field("bname")}
+              value={name}
+              maxLength={120}
+              onChange={(e) => {
+                setName(e.target.value);
+                v.clear("bname");
+              }}
+              autoFocus={isNew}
+            />
+            <FieldError id="bname-error" message={v.errors.bname} />
           </div>
           <div>
             <Label htmlFor="bgroup">
               Company / Group <span className="font-normal text-muted">(optional)</span>
             </Label>
-            <Input id="bgroup" value={group} onChange={(e) => setGroup(e.target.value)} />
+            <Input {...v.field("bgroup")} value={group} maxLength={120} onChange={(e) => setGroup(e.target.value)} />
+            <FieldError id="bgroup-error" message={v.errors.bgroup} />
           </div>
           {existing && !isAdmin && <p className="text-xs text-muted">Only an admin can deactivate a brand.</p>}
           {existing?.status === "INACTIVE" && <p className="text-xs text-muted">Inactive brands are hidden from the New Shoot form but stay on past shoots and in reports.</p>}

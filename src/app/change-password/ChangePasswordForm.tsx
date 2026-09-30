@@ -14,6 +14,10 @@ export function ChangePasswordForm({ canCancel }: { canCancel: boolean }) {
       setError("The new passwords don't match");
       return;
     }
+    if (form.get("newPassword") === form.get("currentPassword")) {
+      setError("Choose a password different from the current one");
+      return;
+    }
     setBusy(true);
     setError(null);
     const res = await fetch("/api/auth/password", {
@@ -33,15 +37,15 @@ export function ChangePasswordForm({ canCancel }: { canCancel: boolean }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="currentPassword">Current password</Label>
+        <Label htmlFor="currentPassword" required>Current password</Label>
         <Input id="currentPassword" name="currentPassword" type="password" autoComplete="current-password" required />
       </div>
       <div>
-        <Label htmlFor="newPassword">New password</Label>
+        <Label htmlFor="newPassword" required>New password</Label>
         <Input id="newPassword" name="newPassword" type="password" autoComplete="new-password" minLength={8} required />
       </div>
       <div>
-        <Label htmlFor="confirm">Confirm new password</Label>
+        <Label htmlFor="confirm" required>Confirm new password</Label>
         <Input id="confirm" name="confirm" type="password" autoComplete="new-password" minLength={8} required />
       </div>
       <FormError message={error} />

@@ -4,11 +4,12 @@ import clsx from "clsx";
 import { CalendarClock, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { plusHour, ymd } from "@/lib/dates";
 import type { ConflictReport, ShootDTO, ShootStatus, ShootType } from "@/lib/types";
 import { STATUS_META, TYPE_META } from "@/lib/ui-meta";
 import { Dialog, Drawer } from "../Overlay";
 import { RichTextEditor } from "../RichTextEditor";
-import { Button, FormError, Input, Label, Pill } from "../ui";
+import { Button, FieldError, FormError, Input, Label, Pill } from "../ui";
 import { BrandCombobox } from "./BrandCombobox";
 import { BookedSlots, DateConflictNote, ResourceConflictNotes } from "./ConflictNotes";
 import { ResourcePicker } from "./ResourcePicker";
@@ -70,7 +71,8 @@ export function ShootForm({
   const masters = useMasters(open);
   const [f, setF] = useState<State | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [missing, setMissing] = useState<Set<string>>(new Set());
+  // Per-field messages shown under each input (key = field id).
+  const [fieldErr, setFieldErr] = useState<Record<string, string>>({});
   const [needCrewConfirm, setNeedCrewConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [report, setReport] = useState<ConflictReport | null>(null);
@@ -82,7 +84,7 @@ export function ShootForm({
     if (target) {
       setF(initial(target));
       setError(null);
-      setMissing(new Set());
+      setFieldErr({});
       setNeedCrewConfirm(false);
       setReport(null);
       setRescheduling(false);
@@ -95,7 +97,11 @@ export function ShootForm({
 
   // Live conflict check across everyone, so busy people are flagged before they're picked.
   useEffect(() => {
-    if (!f?.date || !open) return;
+    if (!open) return;
+    if (!f?.date || !/^\d{4}-\d{2}-\d{2}$/.test(f.date)) {
+      setReport(null);
+      return;
+    }
     const ctrl = { cancelled: false };
     const t = setTimeout(async () => {
       try {
@@ -126,23 +132,31 @@ export function ShootForm({
   const blocked = clashes.length > 0 && f.status !== "CANCELLED";
   const set = <K extends keyof State>(k: K, v: State[K]) => {
     setF((prev) => (prev ? { ...prev, [k]: v } : prev));
-    setMissing((m) => {
-      const n = new Set(m);
-      n.delete(k);
-      return n;
-    });
+    const clearKey = k === "startTime" || k === "endTime" ? "time" : (k as string);
+    setFieldErr((e) => (e[clearKey] ? Object.fromEntries(Object.entries(e).filter(([x]) => x !== clearKey)) : e));
     if (k === "resourceIds") setNeedCrewConfirm(false);
   };
 
   async function submit(allowNoCrew = false) {
     if (!f) return;
-    const miss = new Set<string>();
-    if (!f.brandId) miss.add("brandId");
-    if (!f.shootType) miss.add("shootType");
-    if (!f.date) miss.add("date");
-    setMissing(miss);
-    if (miss.size) return setError("Fill in the highlighted fields.");
-    if (f.startTime && f.endTime && f.endTime <= f.startTime) return setError("End time must be after start time.");
+    const errs: Record<string, string> = {};
+    if (!f.brandId) errs.brandId = "Choose a brand";
+    if (!f.shootType) errs.shootType = "Choose Social Media Shoot or Real Time Visit";
+    const todayKey = ymd(new Date());
+    const dateChanged = target!.mode === "create" || f.date !== target!.shoot.date;
+    if (!f.date) errs.date = "Pick a date";
+    else if (!/^\d{4}-\d{2}-\d{2}$/.test(f.date)) errs.date = "Enter a valid date";
+    else if (dateChanged && f.date < todayKey) errs.date = "Pick today or a future date";
+    if (f.endTime && !f.startTime) errs.time = "Add a start time, or clear the end time";
+    else if (f.startTime && f.endTime && f.endTime <= f.startTime) errs.time = "End time must be after start time";
+    if (f.location.trim().length > 200) errs.location = "Location must be 200 characters or fewer";
+    setFieldErr(errs);
+    const firstBad = Object.keys(errs)[0];
+    if (firstBad) {
+      const focusId = { brandId: "brand", shootType: "shootType", date: "date", time: "startTime", location: "location" }[firstBad];
+      requestAnimationFrame(() => document.getElementById(focusId ?? "")?.focus());
+      return setError("Please fix the highlighted fields.");
+    }
     if (blocked) return setError("This time is already booked for someone on the crew. Change the time or the crew.");
     if (!f.resourceIds.length && !allowNoCrew && f.status !== "CANCELLED") {
       setError(null);
@@ -212,7 +226,7 @@ export function ShootForm({
         className="space-y-5"
       >
         <div>
-          <Label>Brand</Label>
+          <Label required>Brand</Label>
           <BrandCombobox
             brands={masters.brands}
             value={f.brandId}
@@ -220,13 +234,20 @@ export function ShootForm({
             onChange={(id) => set("brandId", id)}
             onCreated={masters.addBrand}
             canCreate={canAddBrand}
-            invalid={missing.has("brandId")}
+            invalid={!!fieldErr.brandId}
           />
+          <FieldError message={fieldErr.brandId} />
         </div>
 
         <div>
-          <Label>Shoot type</Label>
-          <div role="radiogroup" className={clsx("grid grid-cols-2 gap-2 rounded-xl", missing.has("shootType") && "ring-2 ring-danger/60")}>
+          <Label required>Shoot type</Label>
+          <div
+            role="radiogroup"
+            id="shootType"
+            tabIndex={-1}
+            aria-invalid={fieldErr.shootType ? true : undefined}
+            className={clsx("grid grid-cols-2 gap-2 rounded-xl outline-none", fieldErr.shootType && "ring-2 ring-danger/60")}
+          >
             {(["SOCIAL_MEDIA", "REAL_TIME_VISIT"] as const).map((t) => {
               const meta = TYPE_META[t];
               const on = f.shootType === t;
@@ -247,11 +268,20 @@ export function ShootForm({
               );
             })}
           </div>
+          <FieldError message={fieldErr.shootType} />
         </div>
 
         <div>
-          <Label htmlFor="date">Date</Label>
-          <Input id="date" type="date" value={f.date} onChange={(e) => set("date", e.target.value)} className={clsx(missing.has("date") && "border-danger")} required />
+          <Label htmlFor="date" required>
+            Date
+          </Label>
+          <Input
+            id="date"
+            type="date"
+            // Past dates can't be picked for a new shoot (an existing shoot may keep its own date).
+            min={isEdit && target.shoot.date < ymd(new Date()) ? target.shoot.date : ymd(new Date())}
+            value={f.date} onChange={(e) => set("date", e.target.value)} aria-invalid={fieldErr.date ? true : undefined} className={clsx(fieldErr.date && "border-danger")} />
+          <FieldError message={fieldErr.date} />
           <DateConflictNote report={report} date={f.date} />
         </div>
 
@@ -260,10 +290,32 @@ export function ShootForm({
             Time <span className="font-normal text-muted">(optional)</span>
           </Label>
           <div className="flex items-center gap-2">
-            <Input type="time" step={900} aria-label="Start time" value={f.startTime} onChange={(e) => set("startTime", e.target.value)} />
+            <Input
+              id="startTime"
+              type="time"
+              step={900}
+              aria-label="Start time"
+              value={f.startTime}
+              onChange={(e) => {
+                const start = e.target.value;
+                set("startTime", start);
+                // Keep the end after the start: nudge it to start + 1h if it would fall before.
+                if (start && f.endTime && f.endTime <= start) set("endTime", plusHour(start));
+              }}
+              className={clsx(fieldErr.time && "border-danger")}
+            />
             <span className="text-muted">—</span>
-            <Input type="time" step={900} aria-label="End time" value={f.endTime} onChange={(e) => set("endTime", e.target.value)} />
+            <Input
+              type="time"
+              step={900}
+              aria-label="End time"
+              min={f.startTime || undefined}
+              value={f.endTime}
+              onChange={(e) => set("endTime", e.target.value)}
+              className={clsx(fieldErr.time && "border-danger")}
+            />
           </div>
+          <FieldError message={fieldErr.time} />
           <BookedSlots report={report} selected={f.resourceIds} />
         </div>
 
@@ -274,12 +326,16 @@ export function ShootForm({
           <LocationPicker
             value={{ location: f.location, lat: f.locationLat, lng: f.locationLng, placeId: f.locationPlaceId }}
             recent={recentLocations}
-            onChange={(v) => setF((prev) => (prev ? { ...prev, location: v.location, locationLat: v.lat, locationLng: v.lng, locationPlaceId: v.placeId } : prev))}
+            onChange={(v) => {
+              setF((prev) => (prev ? { ...prev, location: v.location, locationLat: v.lat, locationLng: v.lng, locationPlaceId: v.placeId } : prev));
+              if (fieldErr.location) setFieldErr((e) => Object.fromEntries(Object.entries(e).filter(([x]) => x !== "location")));
+            }}
           />
+          <FieldError message={fieldErr.location} />
         </div>
 
         <div>
-          <Label>Deploy resources</Label>
+          <Label required>Deploy resources</Label>
           <ResourcePicker resources={masters.resources} value={f.resourceIds} known={known} onChange={(ids) => set("resourceIds", ids)} conflicts={report?.resourceConflicts ?? []} />
           <ResourceConflictNotes report={report} selected={f.resourceIds} date={f.date} />
           {needCrewConfirm && (

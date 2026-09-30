@@ -41,8 +41,28 @@ export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectE
   return <select className={clsx(field, "h-10 pr-8", !/(^|\s)w-/.test(className ?? "") && "w-full", className)} {...props} />;
 }
 
-export function Label({ className, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
-  return <label className={clsx("mb-1.5 block text-sm font-medium", className)} {...props} />;
+/** Field label; `required` adds a red asterisk so mandatory fields are obvious. */
+export function Label({ className, required, children, ...props }: LabelHTMLAttributes<HTMLLabelElement> & { required?: boolean }) {
+  return (
+    <label className={clsx("mb-1.5 block text-sm font-medium", className)} {...props}>
+      {children}
+      {required && (
+        <span className="ml-0.5 text-danger" aria-hidden="true">
+          *
+        </span>
+      )}
+    </label>
+  );
+}
+
+/** Inline message under a field. */
+export function FieldError({ id, message }: { id?: string; message?: string | null }) {
+  if (!message) return null;
+  return (
+    <p id={id} role="alert" className="mt-1 text-xs text-danger">
+      {message}
+    </p>
+  );
 }
 
 export function FormError({ message }: { message: string | null | undefined }) {

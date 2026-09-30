@@ -4,7 +4,7 @@ import { requireUser, shootScope } from "@/lib/auth";
 import { clashMessage } from "@/lib/clash-message";
 import { isClash } from "@/lib/conflicts";
 import { db } from "@/lib/db";
-import { fmtShort, isYmd, toDbDate } from "@/lib/dates";
+import { fmtShort, isYmd, toDbDate, ymd } from "@/lib/dates";
 import { checkConflicts, listShoots, shootInclude, toShootDTO } from "@/lib/shoots";
 import { firstError, ShootCreate } from "@/lib/validators";
 
@@ -23,6 +23,8 @@ export async function POST(req: NextRequest) {
   const parsed = ShootCreate.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: firstError(parsed.error) }, { status: 400 });
   const input = parsed.data;
+
+  if (input.date < ymd(new Date())) return NextResponse.json({ error: "Shoots can't be created on a past date" }, { status: 400 });
 
   const brand = await db.brand.findUnique({ where: { id: input.brandId } });
   if (!brand) return NextResponse.json({ error: "Brand not found" }, { status: 400 });

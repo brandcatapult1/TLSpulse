@@ -1,12 +1,12 @@
 import { AlertTriangle, Info } from "lucide-react";
-import { fmtDayMonth, fmtTimeRange } from "@/lib/dates";
+import { fmtDayMonth, fmtTimeRange, isYmd } from "@/lib/dates";
 import { CLASH_REASON, shootPlace } from "@/lib/clash-message";
 import type { ConflictReport } from "@/lib/types";
 
 /** Date notes and soft resource conflicts warn; a same-person time clash blocks saving. */
 export function DateConflictNote({ report, date }: { report: ConflictReport | null; date: string }) {
   const n = report?.dateShoots.length ?? 0;
-  if (!n) return null;
+  if (!n || !isYmd(date)) return null;
   return (
     <div className="mt-2 rounded-lg bg-warn-bg px-3 py-2 text-[13px] text-warn">
       <p className="flex items-center gap-1.5 font-medium">
@@ -18,7 +18,7 @@ export function DateConflictNote({ report, date }: { report: ConflictReport | nu
 }
 
 export function ResourceConflictNotes({ report, selected, date }: { report: ConflictReport | null; selected: string[]; date: string }) {
-  const list = (report?.resourceConflicts ?? []).filter((c) => selected.includes(c.resourceId));
+  const list = isYmd(date) ? (report?.resourceConflicts ?? []).filter((c) => selected.includes(c.resourceId)) : [];
   const clashes = list.filter((c) => c.severity === "clash");
   const soft = list.filter((c) => c.severity === "untimed" || c.severity === "sameDay");
   const shared = list.filter((c) => c.severity === "sameVisit");

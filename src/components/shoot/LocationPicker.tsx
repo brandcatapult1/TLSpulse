@@ -152,6 +152,7 @@ export function LocationPicker({ value, onChange, recent }: { value: LocationVal
           aria-expanded={open}
           aria-autocomplete="list"
           autoComplete="off"
+          maxLength={200}
           value={value.location}
           onFocus={() => setOpen(true)}
           onChange={(e) => {

@@ -4,7 +4,7 @@ import { requireAdmin, requireUser, shootScope } from "@/lib/auth";
 import { clashMessage } from "@/lib/clash-message";
 import { clashKey, isClash } from "@/lib/conflicts";
 import { db } from "@/lib/db";
-import { fmtShort, fmtTimeRange, fromDbDate, toDbDate } from "@/lib/dates";
+import { fmtShort, fmtTimeRange, fromDbDate, toDbDate, ymd } from "@/lib/dates";
 import { checkConflicts, getShoot, shootInclude, toShootDTO } from "@/lib/shoots";
 import { firstError, ShootPatch } from "@/lib/validators";
 
@@ -59,6 +59,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (nextStart && nextEnd && nextEnd <= nextStart) {
     return NextResponse.json({ error: "End time must be after start time" }, { status: 400 });
   }
+  if (nextEnd && !nextStart) {
+    return NextResponse.json({ error: "Add a start time, or clear the end time" }, { status: 400 });
+  }
 
   let brandName = prev.brandName;
   if (patch.brandId && patch.brandId !== prev.brandId) {
@@ -68,6 +71,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   }
 
   const dateChanged = patch.date !== undefined && patch.date !== prev.date;
+  if (dateChanged && patch.date! < ymd(new Date())) {
+    return NextResponse.json({ error: "A shoot can't be moved to a past date" }, { status: 400 });
+  }
   let status = patch.status ?? prev.status;
   // A date move on a planned shoot marks it Rescheduled (Handbook §8.3).
   if (dateChanged && prev.status === "PLANNED" && status === "PLANNED") status = "RESCHEDULED";

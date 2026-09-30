@@ -116,7 +116,7 @@ export function CalendarView(p: Props) {
                   p.onCreateAt?.(key);
                 }}
                 onDragOver={(e) => {
-                  if (!canDrag) return;
+                  if (!canDrag || key < p.today) return; // can't move a shoot into the past
                   e.preventDefault();
                   setDropTarget(key);
                 }}
@@ -126,14 +126,14 @@ export function CalendarView(p: Props) {
                   setDropTarget(null);
                   const s = dragging.current;
                   dragging.current = null;
-                  if (s && s.date !== key) p.onMove?.(s, key);
+                  if (s && s.date !== key && key >= p.today) p.onMove?.(s, key);
                 }}
                 className={clsx(
                   "group relative flex min-h-[128px] flex-col gap-[3px] border-line p-1.5",
                   i % 7 !== 6 && "border-r",
                   i < 35 && "border-b",
                   outside && "bg-soft/40",
-                  p.onCreateAt && "cursor-pointer hover:bg-soft/50",
+                  p.onCreateAt && key >= p.today && "cursor-pointer hover:bg-soft/50",
                   dropTarget === key && "bg-social-bg/60 ring-2 ring-social ring-inset",
                 )}
               >
@@ -152,7 +152,7 @@ export function CalendarView(p: Props) {
                       <span className="hidden xl:inline"> shoots</span>
                     </span>
                   )}
-                  {p.onCreateAt && live <= 1 && <Plus size={13} className="text-muted opacity-0 transition-opacity group-hover:opacity-100" />}
+                  {p.onCreateAt && live <= 1 && key >= p.today && <Plus size={13} className="text-muted opacity-0 transition-opacity group-hover:opacity-100" />}
                 </div>
                 {visible.map((s) => (
                   <ShootCard

@@ -29,11 +29,11 @@ export function LoginForm({ next }: { next: string }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email" required>Email</Label>
         <Input id="email" name="email" type="email" autoComplete="username" required autoFocus />
       </div>
       <div>
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password" required>Password</Label>
         <Input id="password" name="password" type="password" autoComplete="current-password" required />
       </div>
       <FormError message={error} />

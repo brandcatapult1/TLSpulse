@@ -25,7 +25,7 @@ export function CrewLookup() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="contact">Your mobile number or email</Label>
+        <Label htmlFor="contact" required>Your mobile number or email</Label>
         <Input id="contact" name="contact" autoComplete="tel" inputMode="email" placeholder="98765 43210 or name@example.com" required autoFocus />
       </div>
       <FormError message={error} />
