@@ -109,8 +109,10 @@ export function CalendarApp({ isAdmin, readOnly = false }: { isAdmin: boolean; r
   const overlayOpen = !!(open || form || move);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
-      if (overlayOpen || e.metaKey || e.ctrlKey || e.altKey || t.closest("input,textarea,select,[contenteditable]")) return;
+      // The target isn't always an element (e.g. events sent to document or window), so check before using closest().
+      const t = e.target;
+      const typing = t instanceof Element && !!t.closest("input,textarea,select,[contenteditable]");
+      if (overlayOpen || e.metaKey || e.ctrlKey || e.altKey || typing) return;
       if (e.key === "ArrowLeft") goto(addMonths(month, -1));
       else if (e.key === "ArrowRight") goto(addMonths(month, 1));
       else if (e.key === "t" || e.key === "T") goto(parseMonth(null));

@@ -121,7 +121,7 @@ export function CalendarView(p: Props) {
               <div
                 key={key}
                 onClick={(e) => {
-                  if ((e.target as HTMLElement).closest("[data-card],[data-more]")) return;
+                  if (e.target instanceof Element && e.target.closest("[data-card],[data-more]")) return;
                   p.onCreateAt?.(key);
                 }}
                 onDragOver={(e) => {
