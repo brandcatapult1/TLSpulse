@@ -45,6 +45,7 @@ export function CalendarView(p: Props) {
 
   const inMonth = p.shoots.filter((s) => s.date.startsWith(format(p.month, "yyyy-MM")) && s.status !== "CANCELLED");
   const social = inMonth.filter((s) => s.shootType === "SOCIAL_MEDIA").length;
+  const holds = inMonth.filter((s) => s.status === "DATE_HOLD").length;
 
   const [dayList, setDayList] = useState<string | null>(null);
   const [hover, setHover] = useState<{ shoot: ShootDTO; rect: DOMRect } | null>(null);
@@ -86,6 +87,14 @@ export function CalendarView(p: Props) {
           <span className="inline-flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-realtime" /> {inMonth.length - social} Real Time
           </span>
+          {holds > 0 && (
+            <>
+              <span className="mx-1.5">·</span>
+              <span className="inline-flex items-center gap-1" title="Tentative dates, not yet confirmed">
+                <span className="hold-stripes inline-block h-2.5 w-3.5 rounded-sm border-l border-dashed border-hold" /> {holds} Date {holds === 1 ? "hold" : "holds"}
+              </span>
+            </>
+          )}
         </div>
         <div className="ml-auto flex items-center gap-2">{p.headerExtra}</div>
       </div>
@@ -280,7 +289,11 @@ function MobileCalendar(p: Props & { days: Date[]; byDate: Map<string, ShootDTO[
                 </span>
                 <span className="flex h-1.5 items-center gap-0.5">
                   {shoots.slice(0, 3).map((s) => (
-                    <span key={s.id} className={clsx("h-1.5 w-1.5 rounded-full", TYPE_META[s.shootType].dot)} />
+                    <span
+                      key={s.id}
+                      title={s.status === "DATE_HOLD" ? "Date hold" : undefined}
+                      className={clsx("h-1.5 w-1.5 rounded-full", s.status === "DATE_HOLD" ? "bg-hold-bg ring-1 ring-hold" : TYPE_META[s.shootType].dot)}
+                    />
                   ))}
                   {shoots.length > 3 && <span className="text-[8px] leading-none font-bold text-muted">+</span>}
                 </span>

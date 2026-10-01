@@ -15,7 +15,11 @@ export function ShootPopover({ shoot, rect, publicView }: { shoot: ShootDTO; rec
     <div role="tooltip" style={{ left, top, width }} className="anim-fade pointer-events-none fixed z-50 rounded-xl border border-line bg-surface p-3 text-sm shadow-xl">
       <div className="font-semibold">{shoot.brandName}</div>
       <div className={`text-xs ${meta.text}`}>{meta.label}</div>
-      {shoot.status !== "PLANNED" && <div className={`text-xs ${shoot.status === "CANCELLED" ? "text-danger" : "text-info"}`}>{shoot.status === "CANCELLED" ? "Cancelled" : "Rescheduled"}</div>}
+      {shoot.status !== "PLANNED" && (
+        <div className={`text-xs font-medium ${shoot.status === "CANCELLED" ? "text-danger" : shoot.status === "DATE_HOLD" ? "text-hold" : "text-info"}`}>
+          {shoot.status === "CANCELLED" ? "Cancelled" : shoot.status === "DATE_HOLD" ? "Date hold (tentative)" : "Rescheduled"}
+        </div>
+      )}
       {shoot.startTime && <div className="tabular mt-1.5 text-xs">{fmtTimeRange(shoot.startTime, shoot.endTime)}</div>}
       <div className="mt-2.5 text-[11px] font-semibold tracking-wide text-muted uppercase">Deployed</div>
       {shoot.resources.length ? (

@@ -84,7 +84,7 @@ export function RescheduleDialog({
     setBusy(true);
     setError(null);
     try {
-      const { shoot: s } = await api<{ shoot: ShootDTO }>(`/api/shoots/${shoot.id}`, { method: "PATCH", body: { ...slot, status: "RESCHEDULED" } });
+      const { shoot: s } = await api<{ shoot: ShootDTO }>(`/api/shoots/${shoot.id}`, { method: "PATCH", body: { ...slot, status: shoot.status === "DATE_HOLD" ? "DATE_HOLD" : "RESCHEDULED" } });
       toast(`${s.brandName} rescheduled to ${fmtLong(s.date)}${s.startTime ? `, ${fmtTimeRange(s.startTime, s.endTime)}` : ""}`);
       onSaved?.(s);
     } catch (e) {

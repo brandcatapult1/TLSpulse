@@ -27,6 +27,7 @@ enum ShootStatus {
   PLANNED
   RESCHEDULED
   CANCELLED
+  DATE_HOLD // tentative: the date is held but not yet confirmed
 }
 
 enum Engagement {

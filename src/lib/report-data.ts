@@ -41,7 +41,7 @@ export function readFilters(req: NextRequest): { period: Period & { label: strin
     period: { ...period, label: periodLabel(period) },
     filters: {
       shootType: pick(p.get("type"), ["SOCIAL_MEDIA", "REAL_TIME_VISIT"] as const),
-      status: pick(p.get("status"), ["PLANNED", "RESCHEDULED", "CANCELLED"] as const),
+      status: pick(p.get("status"), ["PLANNED", "RESCHEDULED", "CANCELLED", "DATE_HOLD"] as const),
       brandId: p.get("brandId") || undefined,
       resourceId: p.get("resourceId") || undefined,
       teamId: p.get("teamId") || undefined,

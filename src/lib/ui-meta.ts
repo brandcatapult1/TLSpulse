@@ -32,4 +32,8 @@ export const STATUS_META: Record<ShootStatus, { label: string; pill: string }> =
   PLANNED: { label: "Planned", pill: "bg-soft text-muted" },
   RESCHEDULED: { label: "Rescheduled", pill: "bg-info/10 text-info" },
   CANCELLED: { label: "Cancelled", pill: "bg-danger/10 text-danger" },
+  DATE_HOLD: { label: "Date hold", pill: "bg-hold-bg text-hold" },
 };
+
+/** Tentative "date hold" shoots: striped yellow card with a dashed border (type colour stays on the left edge). */
+export const HOLD_CARD = "hold-stripes border-dashed";

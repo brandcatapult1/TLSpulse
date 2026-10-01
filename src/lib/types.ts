@@ -1,6 +1,6 @@
 // Client-safe shapes shared by API routes and UI.
 export type ShootType = "SOCIAL_MEDIA" | "REAL_TIME_VISIT";
-export type ShootStatus = "PLANNED" | "RESCHEDULED" | "CANCELLED";
+export type ShootStatus = "PLANNED" | "RESCHEDULED" | "CANCELLED" | "DATE_HOLD";
 export type Engagement = "INTERNAL" | "EXTERNAL";
 export type ActiveState = "ACTIVE" | "INACTIVE";
 

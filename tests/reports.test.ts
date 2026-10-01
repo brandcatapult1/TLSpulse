@@ -16,7 +16,7 @@ const shoots: ReportShoot[] = [
 describe("buildReport", () => {
   it("excludes cancelled shoots everywhere except the Cancelled tile", () => {
     const r = buildReport(shoots, {});
-    expect(r.overview).toMatchObject({ total: 3, social: 2, realtime: 1, cancelled: 1, resourcesUsed: 2, unassigned: 1 });
+    expect(r.overview).toMatchObject({ total: 3, social: 2, realtime: 1, cancelled: 1, holds: 0, resourcesUsed: 2, unassigned: 1 });
     expect(r.byResource.find((x) => x.id === "rohit")).toMatchObject({ total: 2, social: 1, realtime: 1 });
     expect(r.byBrand.find((b) => b.id === "m")?.total).toBe(1);
   });
@@ -58,5 +58,13 @@ describe("unassigned + team drill-down", () => {
       ["2026-09-02", "10:00", ["Rohit"]],
       ["2026-09-03", null, ["Rohit"]],
     ]);
+  });
+});
+
+describe("date holds", () => {
+  it("count as shoots and are reported separately", () => {
+    const held: ReportShoot[] = [...shoots, { ...shoots[0], id: "5", status: "DATE_HOLD" }];
+    expect(buildReport(held, {}).overview).toMatchObject({ total: 4, holds: 1 });
+    expect(buildReport(held, { status: "DATE_HOLD" }).overview.total).toBe(1);
   });
 });

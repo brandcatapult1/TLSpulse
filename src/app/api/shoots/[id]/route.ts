@@ -10,7 +10,7 @@ import { firstError, ShootPatch } from "@/lib/validators";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-const STATUS_WORD = { PLANNED: "planned", RESCHEDULED: "rescheduled", CANCELLED: "cancelled" } as const;
+const STATUS_WORD = { PLANNED: "planned", RESCHEDULED: "rescheduled", CANCELLED: "cancelled", DATE_HOLD: "a date hold (tentative)" } as const;
 const TYPE_WORD = { SOCIAL_MEDIA: "Social Media", REAL_TIME_VISIT: "Real Time Visit" } as const;
 
 export async function GET(_req: NextRequest, { params }: Ctx) {
@@ -163,7 +163,13 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     lines.push({ action: "SHOOT_MOVED", summary: `${who} changed ${label} date — ${fmtShort(prev.date)} → ${fmtShort(dto.date)}`, diff: { from: prev.date, to: dto.date } });
   }
   if (status !== prev.status && !(dateChanged && status === "RESCHEDULED")) {
-    lines.push({ action: "SHOOT_STATUS", summary: `${who} marked ${label} — ${fmtShort(dto.date)} as ${STATUS_WORD[status]}` });
+    lines.push({
+      action: "SHOOT_STATUS",
+      summary:
+        prev.status === "DATE_HOLD" && status !== "CANCELLED"
+          ? `${who} confirmed the ${label} date — ${fmtShort(dto.date)}`
+          : `${who} marked ${label} — ${fmtShort(dto.date)} as ${STATUS_WORD[status]}`,
+    });
   }
   const resName = async (ids: string[]) =>
     (await db.resource.findMany({ where: { id: { in: ids } }, select: { name: true } })).map((r) => r.name).join(", ");

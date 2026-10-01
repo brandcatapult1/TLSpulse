@@ -27,7 +27,7 @@ type ShootRow = {
 };
 type Report = {
   period: Period & { label: string };
-  overview: Split & { cancelled: number; resourcesUsed: number; unassigned: number };
+  overview: Split & { cancelled: number; holds: number; resourcesUsed: number; unassigned: number };
   byResource: (Split & { id: string; name: string; role: string; teamName: string })[];
   byTeam: { id: string; name: string; type: "INTERNAL" | "EXTERNAL"; assignments: number; shoots: number }[];
   byBrand: (Split & { id: string; name: string })[];
@@ -194,17 +194,18 @@ export function ReportsPage() {
       {error && <EmptyState title="Couldn't load the report" hint={error} />}
 
       {/* Monthly overview (PRD §26) */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {o ? (
           <>
             <Tile label="Total shoots" value={o.total} />
             <Tile label="Social Media" value={o.social} dot="bg-social" />
             <Tile label="Real Time Visits" value={o.realtime} dot="bg-realtime" />
+            <Tile label="Date holds" value={o.holds} tone="text-hold" hint={o.holds ? "Tentative, not confirmed" : undefined} hintTone="text-muted" />
             <Tile label="Cancelled" value={o.cancelled} tone="text-danger" />
             <Tile label="Resources used" value={o.resourcesUsed} hint={o.unassigned ? `${o.unassigned} shoot${o.unassigned > 1 ? "s" : ""} unassigned` : undefined} />
           </>
         ) : (
-          Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-[92px]" />)
+          Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-[92px]" />)
         )}
       </div>
 
@@ -495,7 +496,7 @@ export function ReportsPage() {
   );
 }
 
-function Tile({ label, value, dot, tone, hint }: { label: string; value: number; dot?: string; tone?: string; hint?: string }) {
+function Tile({ label, value, dot, tone, hint, hintTone = "text-warn" }: { label: string; value: number; dot?: string; tone?: string; hint?: string; hintTone?: string }) {
   return (
     <div className="rounded-2xl border border-line p-4">
       <div className="flex items-center gap-1.5 text-xs text-muted">
@@ -503,7 +504,7 @@ function Tile({ label, value, dot, tone, hint }: { label: string; value: number;
         {label}
       </div>
       <div className={clsx("tabular mt-1 text-2xl font-semibold tracking-tight", tone)}>{value}</div>
-      {hint && <div className="mt-0.5 text-[11px] text-warn">{hint}</div>}
+      {hint && <div className={clsx("mt-0.5 text-[11px]", hintTone)}>{hint}</div>}
     </div>
   );
 }

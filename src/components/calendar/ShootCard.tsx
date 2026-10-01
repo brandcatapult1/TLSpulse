@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { RotateCcw, Users } from "lucide-react";
 import { fmtTime, fmtTimeRange } from "@/lib/dates";
 import type { ShootDTO } from "@/lib/types";
-import { TYPE_META } from "@/lib/ui-meta";
+import { HOLD_CARD, STATUS_META, TYPE_META } from "@/lib/ui-meta";
 
 /** Resource indicator (PRD §12): count when staffed, amber "Unassigned" otherwise. */
 export function CrewBadge({ shoot, publicView }: { shoot: ShootDTO; publicView?: boolean }) {
@@ -59,6 +59,7 @@ export function ShootCard({
       className={clsx(
         "block w-full rounded-md border-l-[3px] px-1.5 py-[3px] text-left text-[11.5px] leading-tight transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-sm",
         meta.card,
+        shoot.status === "DATE_HOLD" && HOLD_CARD,
         cancelled && "opacity-50",
         draggable && "cursor-grab active:cursor-grabbing",
       )}
@@ -76,7 +77,11 @@ export function ShootCard({
       <span className="mt-px flex items-center gap-1 text-[10.5px]">
         <span className="min-w-0 flex-1 truncate">
           {shoot.startTime && <span className="tabular text-muted">{fmtTime(shoot.startTime).replace(":00", "")} · </span>}
-          <span className={cancelled ? "text-muted" : meta.text}>{cancelled ? "Cancelled" : meta.short}</span>
+          {shoot.status === "DATE_HOLD" ? (
+            <span className="font-semibold text-hold">Hold · {meta.short}</span>
+          ) : (
+            <span className={cancelled ? "text-muted" : meta.text}>{cancelled ? "Cancelled" : meta.short}</span>
+          )}
         </span>
         {!cancelled && shoot.resources.length === 0 && <span className="hidden shrink-0 font-medium text-warn lg:inline">{publicView ? "Not assigned" : "Unassigned"}</span>}
       </span>
@@ -92,7 +97,11 @@ export function ShootRow({ shoot, onOpen, publicView }: { shoot: ShootDTO; onOpe
     <button
       type="button"
       onClick={() => onOpen(shoot)}
-      className={clsx("flex w-full items-stretch gap-3 rounded-xl border border-line bg-surface p-3 text-left transition-colors hover:bg-soft", cancelled && "opacity-55")}
+      className={clsx(
+        "flex w-full items-stretch gap-3 rounded-xl border border-line bg-surface p-3 text-left transition-colors hover:bg-soft",
+        shoot.status === "DATE_HOLD" && HOLD_CARD,
+        cancelled && "opacity-55",
+      )}
     >
       <span className={clsx("w-1 shrink-0 rounded-full", meta.dot)} />
       <span className="w-[68px] shrink-0 text-sm leading-tight">
@@ -109,7 +118,11 @@ export function ShootRow({ shoot, onOpen, publicView }: { shoot: ShootDTO; onOpe
         <span className={clsx("block truncate font-semibold", cancelled && "line-through")}>{shoot.brandName}</span>
         <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs">
           <span className={meta.text}>{meta.label}</span>
-          {shoot.status !== "PLANNED" && <span className={shoot.status === "CANCELLED" ? "text-danger" : "text-info"}>{shoot.status === "CANCELLED" ? "Cancelled" : "Rescheduled"}</span>}
+          {shoot.status !== "PLANNED" && (
+            <span className={clsx("font-medium", shoot.status === "CANCELLED" ? "text-danger" : shoot.status === "DATE_HOLD" ? "text-hold" : "text-info")}>
+              {STATUS_META[shoot.status].label}
+            </span>
+          )}
         </span>
         {!cancelled && (
           <span className="mt-1 block truncate text-xs text-muted">

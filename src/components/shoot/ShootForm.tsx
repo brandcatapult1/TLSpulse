@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { CalendarClock, XCircle } from "lucide-react";
+import { CalendarCheck, CalendarClock, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { plusHour, ymd } from "@/lib/dates";
@@ -177,7 +177,8 @@ export function ShootForm({
         locationPlaceId: f.locationPlaceId,
         notes: f.notes,
         resourceIds: f.resourceIds,
-        ...(target!.mode === "edit" ? { status: f.status } : {}),
+        // New shoots are Planned unless marked as a date hold; edits send the chosen status.
+        ...(target!.mode === "edit" ? { status: f.status } : f.status === "DATE_HOLD" ? { status: "DATE_HOLD" } : {}),
       };
       const { shoot } =
         target!.mode === "create"
@@ -282,6 +283,20 @@ export function ShootForm({
             min={isEdit && target.shoot.date < ymd(new Date()) ? target.shoot.date : ymd(new Date())}
             value={f.date} onChange={(e) => set("date", e.target.value)} aria-invalid={fieldErr.date ? true : undefined} className={clsx(fieldErr.date && "border-danger")} />
           <FieldError message={fieldErr.date} />
+          {!isEdit && (
+            <label className={clsx("mt-2 flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 text-sm", f.status === "DATE_HOLD" ? "hold-stripes border-l border-hold" : "border-line")}>
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-[var(--color-hold)]"
+                checked={f.status === "DATE_HOLD"}
+                onChange={(e) => set("status", e.target.checked ? "DATE_HOLD" : "PLANNED")}
+              />
+              <span>
+                <span className="font-medium">Date hold (tentative)</span>
+                <span className="block text-xs text-muted">The date is held but not confirmed yet. Shows striped on the calendar; confirm it later from Edit.</span>
+              </span>
+            </label>
+          )}
           <DateConflictNote report={report} date={f.date} />
         </div>
 
@@ -354,18 +369,31 @@ export function ShootForm({
             <Label>Status</Label>
             <div className="flex items-center gap-2">
               <Pill className={STATUS_META[f.status].pill}>{STATUS_META[f.status].label}</Pill>
-              {f.status === "RESCHEDULED" && target.shoot.status !== "RESCHEDULED" && <span className="text-xs text-muted">— saved when you press Save changes</span>}
+              {f.status !== target.shoot.status && <span className="text-xs text-muted">— saved when you press Save changes</span>}
             </div>
             {target.shoot.status === "CANCELLED" ? (
               <p className="mt-2 text-xs text-muted">This shoot is cancelled. Cancelled shoots can&apos;t be changed back.</p>
             ) : (
-              <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="mt-2 grid grid-cols-3 gap-2">
                 <Button variant="outline" className="text-danger" onClick={() => setConfirmCancel(true)}>
                   <XCircle size={15} /> Cancel
                 </Button>
                 <Button variant="outline" onClick={() => setRescheduling(true)}>
                   <CalendarClock size={15} /> Reschedule
                 </Button>
+                {f.status === "DATE_HOLD" ? (
+                  <Button
+                    variant="outline"
+                    title="Confirm this date (no longer tentative)"
+                    onClick={() => set("status", target.shoot.status !== "DATE_HOLD" ? target.shoot.status : "PLANNED")}
+                  >
+                    <CalendarCheck size={15} /> Confirm date
+                  </Button>
+                ) : (
+                  <Button variant="outline" className="text-hold" title="Mark as a tentative date" onClick={() => set("status", "DATE_HOLD")}>
+                    <CalendarClock size={15} /> Date Hold
+                  </Button>
+                )}
               </div>
             )}
             {f.date !== target.shoot.date && target.shoot.status === "PLANNED" && f.status === "PLANNED" && (
@@ -390,7 +418,9 @@ export function ShootForm({
           mode="apply"
           onClose={() => setRescheduling(false)}
           onApply={(slot) => {
-            setF((prev) => (prev ? { ...prev, date: slot.date, startTime: slot.startTime ?? "", endTime: slot.endTime ?? "", status: "RESCHEDULED" } : prev));
+            setF((prev) =>
+              prev ? { ...prev, date: slot.date, startTime: slot.startTime ?? "", endTime: slot.endTime ?? "", status: prev.status === "DATE_HOLD" ? "DATE_HOLD" : "RESCHEDULED" } : prev,
+            );
             setRescheduling(false);
           }}
         />

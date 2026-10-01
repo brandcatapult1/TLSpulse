@@ -19,6 +19,10 @@ describe("shoot validation", () => {
     expect(msg(ShootCreate.safeParse({ ...shoot, startTime: "25:00" }))).toBe("Use HH:MM");
     expect(ok(ShootPatch.safeParse({ endTime: "12:00", startTime: null }))).toBe(false);
   });
+  it("accepts a tentative date hold", () => {
+    expect(ok(ShootCreate.safeParse({ ...shoot, status: "DATE_HOLD" }))).toBe(true);
+    expect(ok(ShootPatch.safeParse({ status: "DATE_HOLD" }))).toBe(true);
+  });
   it("limits location length and pin coordinates", () => {
     expect(ok(ShootCreate.safeParse({ ...shoot, location: "x".repeat(201) }))).toBe(false);
     expect(ok(ShootCreate.safeParse({ ...shoot, locationLat: 91, locationLng: 77 }))).toBe(false);

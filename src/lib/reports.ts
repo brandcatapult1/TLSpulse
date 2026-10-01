@@ -82,7 +82,7 @@ export function buildReport(all: ReportShoot[], f: ReportFilters) {
   const desc = <T extends { name: string }>(key: (x: T) => number) => (a: T, b: T) => key(b) - key(a) || a.name.localeCompare(b.name);
   const unassigned = counted.filter((s) => s.resources.length === 0).sort(byDateTime).map(row);
   return {
-    overview: { ...overview, cancelled, resourcesUsed: usedResources.size, unassigned: unassigned.length },
+    overview: { ...overview, cancelled, holds: counted.filter((s) => s.status === "DATE_HOLD").length, resourcesUsed: usedResources.size, unassigned: unassigned.length },
     unassigned,
     byResource: [...byResource.values()].sort(desc((x) => x.total)),
     byTeam: [...byTeam.values()].map(({ shoots, ...t }) => ({ ...t, shoots: shoots.size })).sort(desc((x) => x.assignments)),

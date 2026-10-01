@@ -41,7 +41,7 @@ const shootFields = {
     .nullish()
     .transform((v) => sanitizeNotes(v)),
   resourceIds: z.array(z.string().min(1)).max(50),
-  status: z.enum(["PLANNED", "RESCHEDULED", "CANCELLED"]),
+  status: z.enum(["PLANNED", "RESCHEDULED", "CANCELLED", "DATE_HOLD"]),
 };
 
 function endAfterStart(v: { startTime?: string | null; endTime?: string | null }) {
